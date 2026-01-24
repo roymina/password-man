@@ -1,0 +1,14 @@
+{
+  "name": "temp_init",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "portable": "powershell -Command \"New-Item -ItemType Directory -Force -Path .\\PasswordMan-Portable | Out-Null; Copy-Item .\\src-tauri\\target\\release\\password-man.exe .\\PasswordMan-Portable\\ -Force; Write-Host '✓ 绿色版已更新'\""
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "canvas": "^3.2.1"
+  }
+}

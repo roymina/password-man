@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PasswordMan</title>
+    <script type="module" src="/main.js" defer></script>
+  </head>
+  <body>
+    <div class="header">
+      <h2>PasswordMan</h2>
+      <button id="theme-toggle" title="Switch Theme">🌙</button>
+    </div>
+
+    <div class="controls">
+      <input type="text" id="search-input" placeholder="输入密码名称关键词查询" />
+      <button id="add-btn" title="Add Password">+</button>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>密码名称</th>
+            <th>用户名</th>
+            <th>密码</th>
+            <th>备注</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="password-list">
+          <!-- Rows will be injected here -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Modal for Add/Edit -->
+    <div id="modal" class="modal hidden">
+      <div class="modal-content">
+        <h3 id="modal-title">添加密码</h3>
+        <input type="hidden" id="modal-id" />
+        
+        <label>密码名称</label>
+        <input type="text" id="modal-name" required />
+        
+        <label>用户名</label>
+        <input type="text" id="modal-username" />
+
+        <label>密码</label>
+        <div class="password-input-group">
+            <input type="text" id="modal-password" required />
+            <button id="modal-gen-pwd" type="button" title="Generate">🎲</button>
+        </div>
+        
+        <label>备注</label>
+        <textarea id="modal-note"></textarea>
+
+        <div class="modal-actions">
+          <button id="modal-cancel">取消</button>
+          <button id="modal-save" class="primary">保存</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
