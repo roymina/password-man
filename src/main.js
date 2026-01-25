@@ -7,12 +7,7 @@ const autostart = window.__TAURI__.plugin && window.__TAURI__.plugin.autostart ?
 };
 const { enable, isEnabled, disable } = autostart;
 
-// Safely access opener
-const opener = window.__TAURI__.plugin && window.__TAURI__.plugin.opener ? window.__TAURI__.plugin.opener : (window.__TAURI__.opener ? window.__TAURI__.opener : null);
-const open = opener ? opener.open : async (url) => {
-    console.warn('Opener plugin not found, falling back to window.open');
-    window.open(url, '_blank');
-};
+
 
 let currentPasswords = [];
 let isDbLocked = false;
@@ -131,47 +126,34 @@ function renderPasswords() {
 
 
 
-        // URL
         const tdUrl = document.createElement('td');
         if (pwd.url) {
             const urlDiv = document.createElement('div');
-            const a = document.createElement('a');
             
             let finalUrl = pwd.url;
             if (!/^https?:\/\//i.test(finalUrl)) {
                 finalUrl = 'https://' + finalUrl;
             }
             
-            a.href = finalUrl;
-            a.target = '_blank';
-            a.title = finalUrl;
+            // Use span instead of anchor tag - no click to open
+            const urlSpan = document.createElement('span');
+            urlSpan.title = finalUrl;
             
-            a.addEventListener('click', async (e) => {
-                e.preventDefault();
-                try {
-                    await open(finalUrl);
-                } catch (err) {
-                    console.error('Failed to open URL:', err);
-                    // Fallback using window.open if plugin fails, though might not work in all webview configs
-                    window.open(finalUrl, '_blank');
-                }
-            });
-
             // Truncate logic
             let displayUrl = pwd.url.replace(/^https?:\/\//, '');
             if (displayUrl.length > 25) {
                 displayUrl = displayUrl.substring(0, 25) + '...';
             }
-            a.textContent = '🔗 ' + displayUrl;
-            a.style.fontSize = '0.9em';
-            a.style.color = 'var(--primary-color)';
+            urlSpan.textContent = '🔗 ' + displayUrl;
+            urlSpan.style.fontSize = '0.9em';
+            urlSpan.style.color = 'var(--text-color)';
             
             // Flex container for URL + Copy btn
             urlDiv.style.display = 'flex';
             urlDiv.style.alignItems = 'center';
             urlDiv.style.gap = '5px';
             
-            urlDiv.appendChild(a);
+            urlDiv.appendChild(urlSpan);
 
             const copyUrlBtn = createIconBtn('assets/solar--copy-line-duotone.svg', t('toast-copied'), (e) => {
                 // Prevent row click or link click events
