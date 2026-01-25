@@ -22,23 +22,23 @@
 
 /* Class to force themes if manually toggled */
 body.light-theme {
-    --bg-color: #ffffff;
-    --text-color: #333333;
-    --primary-color: #396cd8;
-    --border-color: #ddd;
-    --row-hover: #f5f5f5;
-    --modal-bg: #ffffff;
-    --input-bg: #ffffff;
+  --bg-color: #ffffff;
+  --text-color: #333333;
+  --primary-color: #396cd8;
+  --border-color: #ddd;
+  --row-hover: #f5f5f5;
+  --modal-bg: #ffffff;
+  --input-bg: #ffffff;
 }
 
 body.dark-theme {
-    --bg-color: #1a1a1a;
-    --text-color: #f0f0f0;
-    --primary-color: #535bf2;
-    --border-color: #444;
-    --row-hover: #2a2a2a;
-    --modal-bg: #222;
-    --input-bg: #333;
+  --bg-color: #1a1a1a;
+  --text-color: #f0f0f0;
+  --primary-color: #535bf2;
+  --border-color: #444;
+  --row-hover: #2a2a2a;
+  --modal-bg: #222;
+  --input-bg: #333;
 }
 
 body {
@@ -97,36 +97,95 @@ table {
   border: 1px solid var(--border-color);
 }
 
-th, td {
+th,
+td {
   padding: 12px;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
+}
+
+th:last-child,
+td:last-child {
+  width: 1%;
+  white-space: nowrap;
 }
 
 tbody tr:hover {
   background-color: var(--row-hover);
 }
 
+.pinned-row {
+  background-color: rgba(127, 127, 127, 0.05);
+}
+
 .action-btn {
   margin-right: 5px;
-  font-size: 0.9em;
+  background: none;
+  border: none;
+  padding: 4px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.action-btn:hover {
+  background-color: var(--border-color);
+}
+
+.action-btn img {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+/* In dark mode, maybe invert icons if they are black SVG? */
+/* The icons seem to be colored or outline. */
+/* Using filter: invert(1) might be needed if they are black on transparent and we are in dark mode. */
+/* Let's assume SVGs handle themselves or are simple single color that matches text? */
+/* Actually, let's just apply a filter for dark mode if they are black. */
+body.dark-theme .action-btn img {
+  filter: invert(1);
+}
+
+
+.action-btn.delete-btn:hover {
+  background-color: #fee2e2;
+}
+
+body.dark-theme .action-btn.delete-btn:hover {
+  background-color: #450a0a;
+}
+
+.action-btn.delete-btn img {
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+}
+
+body.dark-theme .action-btn.delete-btn img {
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
 }
 
 .password-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+
 .password-cell span {
-    font-family: monospace;
+  font-family: monospace;
 }
 
 /* Modal */
 .modal {
   position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -151,7 +210,8 @@ tbody tr:hover {
   margin-top: 5px;
 }
 
-.modal-content input, .modal-content textarea {
+.modal-content input,
+.modal-content textarea {
   padding: 8px;
   border: 1px solid var(--border-color);
   background: var(--input-bg);
@@ -160,16 +220,66 @@ tbody tr:hover {
 }
 
 .password-input-group {
-    display: flex;
-    gap: 5px;
+  display: flex;
+  gap: 5px;
 }
+
 .password-input-group input {
-    flex: 1;
+  flex: 1;
 }
+
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 15px;
+}
+
+/* Toast Notification */
+.toast {
+  visibility: hidden;
+  min-width: 250px;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  border-radius: 4px;
+  padding: 16px;
+  position: fixed;
+  z-index: 1000;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+  font-size: 16px;
+  opacity: 0;
+  transition: opacity 0.3s, bottom 0.3s;
+}
+
+.toast.show {
+  visibility: visible;
+  opacity: 1;
+  bottom: 50px;
+}
+
+/* Settings Modal */
+.settings-section {
+  text-align: left;
+  margin-top: 10px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 15px;
+}
+
+.settings-section h4 {
+  margin: 0 0 10px 0;
+  color: var(--text-color);
+}
+
+.settings-desc {
+  font-size: 0.9em;
+  color: #888;
+  margin-bottom: 15px;
+}
+
+body.dark-theme .settings-desc {
+  color: #aaa;
 }

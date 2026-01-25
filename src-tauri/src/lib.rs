@@ -10,11 +10,18 @@ use tauri::{
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .manage(db::AppState {
+            db_key: std::sync::Mutex::new(None),
+        })
         .invoke_handler(tauri::generate_handler![
             db::get_passwords,
             db::add_password,
             db::update_password,
-            db::delete_password
+            db::delete_password,
+            db::toggle_pin_password,
+            db::unlock_db,
+            db::set_db_password,
+            db::remove_db_password
         ])
         .setup(|app| {
 // Initialize Database
