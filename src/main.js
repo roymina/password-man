@@ -1,4 +1,18 @@
 const { invoke } = window.__TAURI__.core;
+import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
+const autostart = window.__TAURI__.plugin && window.__TAURI__.plugin.autostart ? window.__TAURI__.plugin.autostart : {
+    enable: async () => console.warn('Autostart plugin not found'),
+    isEnabled: async () => false,
+    disable: async () => console.warn('Autostart plugin not found')
+};
+const { enable, isEnabled, disable } = autostart;
+
+// Safely access opener
+const opener = window.__TAURI__.plugin && window.__TAURI__.plugin.opener ? window.__TAURI__.plugin.opener : (window.__TAURI__.opener ? window.__TAURI__.opener : null);
+const open = opener ? opener.open : async (url) => {
+    console.warn('Opener plugin not found, falling back to window.open');
+    window.open(url, '_blank');
+};
 
 let currentPasswords = [];
 let isDbLocked = false;
@@ -18,6 +32,7 @@ const modalTitle = document.getElementById('modal-title');
 const mId = document.getElementById('modal-id');
 const mName = document.getElementById('modal-name');
 const mUsername = document.getElementById('modal-username');
+const mUrl = document.getElementById('modal-url');
 const mPassword = document.getElementById('modal-password');
 const mNote = document.getElementById('modal-note');
 const mGenPwd = document.getElementById('modal-gen-pwd');
@@ -53,7 +68,7 @@ async function loadPasswords() {
             isDbProtected = true;
             showUnlockModal();
         } else {
-            alert('加载密码失败: ' + error);
+            alert(t('alert-op-fail') + error);
         }
     }
 }
@@ -67,28 +82,6 @@ function renderPasswords() {
             tr.classList.add('pinned-row');
         }
 
-        // Name
-        const tdName = document.createElement('td');
-        // Add pin icon if pinned
-        if (pwd.pinned) {
-            tdName.textContent = '📌 ' + pwd.name;
-        } else {
-            tdName.textContent = pwd.name;
-        }
-
-        // Username
-        const tdUser = document.createElement('td');
-        tdUser.textContent = pwd.username || '-';
-
-        // Password with Toggle
-        const tdPwd = document.createElement('td');
-        tdPwd.className = 'password-cell';
-        const span = document.createElement('span');
-        span.textContent = '••••••';
-        span.dataset.real = pwd.password;
-        span.dataset.mask = '••••••';
-        span.dataset.visible = 'false';
-
         // Helper to create icon button
         const createIconBtn = (src, title, onClick) => {
             const btn = document.createElement('button');
@@ -101,7 +94,114 @@ function renderPasswords() {
             return btn;
         };
 
-        const eyeBtn = createIconBtn('assets/solar--eye-outline.svg', '显示/隐藏', () => {
+        // Name
+        const tdName = document.createElement('td');
+        // Add pin icon if pinned
+        if (pwd.pinned) {
+            tdName.textContent = '📌 ' + pwd.name;
+        } else {
+            tdName.textContent = pwd.name;
+        }
+
+        // Username & URL
+        const tdUser = document.createElement('td');
+        const userDiv = document.createElement('div');
+        userDiv.style.display = 'flex';
+        userDiv.style.alignItems = 'center';
+        userDiv.style.gap = '5px';
+        
+        const usernameText = document.createElement('span');
+        usernameText.textContent = pwd.username || '-';
+        userDiv.appendChild(usernameText);
+
+        if (pwd.username) {
+             const copyUserBtn = createIconBtn('assets/solar--copy-line-duotone.svg', t('toast-copied'), () => {
+                navigator.clipboard.writeText(pwd.username).then(() => {
+                    showToast(t('toast-copied'));
+                }).catch(err => {
+                    console.error('Copy failed', err);
+                    showToast(t('toast-copy-fail'));
+                });
+            });
+            // Make it consistent with other buttons
+            // copyUserBtn.style.transform = 'scale(0.8)';
+            userDiv.appendChild(copyUserBtn);
+        }
+        tdUser.appendChild(userDiv);
+
+
+
+        // URL
+        const tdUrl = document.createElement('td');
+        if (pwd.url) {
+            const urlDiv = document.createElement('div');
+            const a = document.createElement('a');
+            
+            let finalUrl = pwd.url;
+            if (!/^https?:\/\//i.test(finalUrl)) {
+                finalUrl = 'https://' + finalUrl;
+            }
+            
+            a.href = finalUrl;
+            a.target = '_blank';
+            a.title = finalUrl;
+            
+            a.addEventListener('click', async (e) => {
+                e.preventDefault();
+                try {
+                    await open(finalUrl);
+                } catch (err) {
+                    console.error('Failed to open URL:', err);
+                    // Fallback using window.open if plugin fails, though might not work in all webview configs
+                    window.open(finalUrl, '_blank');
+                }
+            });
+
+            // Truncate logic
+            let displayUrl = pwd.url.replace(/^https?:\/\//, '');
+            if (displayUrl.length > 25) {
+                displayUrl = displayUrl.substring(0, 25) + '...';
+            }
+            a.textContent = '🔗 ' + displayUrl;
+            a.style.fontSize = '0.9em';
+            a.style.color = 'var(--primary-color)';
+            
+            // Flex container for URL + Copy btn
+            urlDiv.style.display = 'flex';
+            urlDiv.style.alignItems = 'center';
+            urlDiv.style.gap = '5px';
+            
+            urlDiv.appendChild(a);
+
+            const copyUrlBtn = createIconBtn('assets/solar--copy-line-duotone.svg', t('toast-copied'), (e) => {
+                // Prevent row click or link click events
+                e.preventDefault();
+                e.stopPropagation();
+                navigator.clipboard.writeText(finalUrl).then(() => {
+                    showToast(t('toast-copied'));
+                }).catch(err => {
+                    console.error('Copy failed', err);
+                    showToast(t('toast-copy-fail'));
+                });
+            });
+            // copyUrlBtn.style.transform = 'scale(0.8)';
+            urlDiv.appendChild(copyUrlBtn);
+
+            tdUrl.appendChild(urlDiv);
+        }
+
+        // Password with Toggle
+        const tdPwd = document.createElement('td');
+        tdPwd.className = 'password-cell';
+        const span = document.createElement('span');
+        span.textContent = '••••••';
+        span.dataset.real = pwd.password;
+        span.dataset.mask = '••••••';
+        span.dataset.visible = 'false';
+
+
+
+        const eyeBtn = createIconBtn('assets/solar--eye-outline.svg', t('tooltip-show-hide'), () => {
             const visible = span.dataset.visible === 'true';
             if (visible) {
                 span.textContent = span.dataset.mask;
@@ -113,12 +213,12 @@ function renderPasswords() {
             }
         });
 
-        const copyBtn = createIconBtn('assets/solar--copy-line-duotone.svg', '复制', () => {
+        const copyBtn = createIconBtn('assets/solar--copy-line-duotone.svg', t('tooltip-copy'), () => {
             navigator.clipboard.writeText(pwd.password).then(() => {
-                showToast('密码已复制到剪贴板');
+                showToast(t('toast-copied'));
             }).catch(err => {
                 console.error('Copy failed', err);
-                showToast('复制失败');
+                showToast(t('toast-copy-fail'));
             });
         });
 
@@ -133,14 +233,14 @@ function renderPasswords() {
         // Actions
         const tdActions = document.createElement('td');
 
-        const pinBtn = createIconBtn('assets/solar--arrow-to-top-left-bold.svg', pwd.pinned ? '取消置顶' : '置顶', () => togglePin(pwd.id, !pwd.pinned));
+        const pinBtn = createIconBtn('assets/solar--arrow-to-top-left-bold.svg', pwd.pinned ? t('tooltip-unpin') : t('tooltip-pin'), () => togglePin(pwd.id, !pwd.pinned));
         if (pwd.pinned) {
             // Optional: style pin button to show active state
             pinBtn.style.backgroundColor = 'var(--border-color)';
         }
 
-        const editBtn = createIconBtn('assets/solar--pen-linear.svg', '修改', () => openModal(pwd));
-        const delBtn = createIconBtn('assets/solar--remove-square-broken.svg', '删除', () => handleDelete(pwd.id));
+        const editBtn = createIconBtn('assets/solar--pen-linear.svg', t('modal-edit-title'), () => openModal(pwd));
+        const delBtn = createIconBtn('assets/solar--remove-square-broken.svg', t('th-action'), () => handleDelete(pwd.id));
         delBtn.classList.add('delete-btn');
 
         tdActions.appendChild(pinBtn);
@@ -149,6 +249,7 @@ function renderPasswords() {
 
         tr.appendChild(tdName);
         tr.appendChild(tdUser);
+        tr.appendChild(tdUrl);
         tr.appendChild(tdPwd);
         tr.appendChild(tdNote);
         tr.appendChild(tdActions);
@@ -168,30 +269,32 @@ async function togglePin(id, pinned) {
 }
 
 async function handleDelete(id) {
-    showConfirm('确定要删除这条密码吗？此操作无法撤销。', async () => {
+    showConfirm(t('confirm-del-msg'), async () => {
         try {
             await invoke('delete_password', { id });
             loadPasswords();
-            showToast('已删除');
+            showToast(t('toast-deleted'));
         } catch (e) {
-            alert('删除失败: ' + e);
+            alert(t('alert-del-fail') + e);
         }
     });
 }
 
 function openModal(pwd = null) {
     if (pwd) {
-        modalTitle.textContent = '修改密码';
+        modalTitle.textContent = t('modal-edit-title');
         mId.value = pwd.id;
         mName.value = pwd.name;
         mUsername.value = pwd.username || '';
+        mUrl.value = pwd.url || '';
         mPassword.value = pwd.password;
         mNote.value = pwd.note || '';
     } else {
-        modalTitle.textContent = '添加密码';
+        modalTitle.textContent = t('modal-add-title');
         mId.value = '';
         mName.value = '';
         mUsername.value = '';
+        mUrl.value = '';
         mPassword.value = '';
         mNote.value = '';
     }
@@ -205,25 +308,26 @@ function closeModal() {
 async function savePassword() {
     const name = mName.value;
     const username = mUsername.value || null;
+    const url = mUrl.value || null;
     const password = mPassword.value;
     const note = mNote.value || null;
     const id = mId.value ? parseInt(mId.value) : null;
 
     if (!name || !password) {
-        alert('名称和密码必填');
+        alert(t('alert-name-pass-req'));
         return;
     }
 
     try {
         if (id) {
-            await invoke('update_password', { id, name, username, password, note });
+            await invoke('update_password', { id, name, username, password, note, url });
         } else {
-            await invoke('add_password', { name, username, password, note });
+            await invoke('add_password', { name, username, password, note, url });
         }
         closeModal();
         loadPasswords();
     } catch (e) {
-        alert('保存失败: ' + e);
+        alert(t('alert-op-fail') + e);
     }
 }
 
@@ -259,9 +363,11 @@ function showToast(message) {
 }
 
 // Event Listeners
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+    initI18n();
     initTheme();
     loadPasswords();
+    initSettings();
 
     searchInput.addEventListener('input', loadPasswords);
 
@@ -341,7 +447,8 @@ async function unlockDb() {
         document.getElementById('unlock-password').value = '';
         loadPasswords();
     } catch (e) {
-        alert('解锁失败: ' + e);
+        alert(t('alert-op-fail') + e);
+        loadPasswords();
     }
 }
 
@@ -363,6 +470,14 @@ function openSettingsModal() {
     const noPassDiv = document.getElementById('settings-no-pass');
     const hasPassDiv = document.getElementById('settings-has-pass');
 
+    // Update Autostart Checkbox
+    const autostartCb = document.getElementById('settings-autostart');
+    isEnabled().then(enabled => autostartCb.checked = enabled);
+
+    // Update Language Selection
+    const langSelect = document.getElementById('settings-language');
+    langSelect.value = getLanguage();
+
     if (isDbProtected) {
         noPassDiv.classList.add('hidden');
         hasPassDiv.classList.remove('hidden');
@@ -379,7 +494,7 @@ let passInputMode = 'set'; // 'set' or 'change'
 function openPassInput(mode) {
     passInputMode = mode;
     const title = document.getElementById('pass-input-title');
-    title.textContent = mode === 'set' ? '设置主密码' : '修改主密码';
+    title.textContent = mode === 'set' ? t('pass-set-title') : t('pass-change-title');
 
     document.getElementById('new-pass-1').value = '';
     document.getElementById('new-pass-2').value = '';
@@ -393,11 +508,11 @@ async function handlePassInputSave() {
     const p2 = document.getElementById('new-pass-2').value;
 
     if (!p1) {
-        alert('密码不能为空');
+        alert(t('alert-name-pass-req')); // reusing helper or generic empty
         return;
     }
     if (p1 !== p2) {
-        alert('两次输入的密码不一致');
+        alert(t('alert-pass-mismatch'));
         return;
     }
 
@@ -405,30 +520,54 @@ async function handlePassInputSave() {
         if (passInputMode === 'set') {
             await invoke('set_db_password', { password: p1 });
             isDbProtected = true;
-            showToast('主密码已设置');
+            showToast(t('toast-saved'));
         } else {
             // Change
             await invoke('set_db_password', { password: p1 }); // rekey uses set_db_password logic
-            showToast('主密码已修改');
+            showToast(t('toast-saved'));
         }
         document.getElementById('pass-input-modal').classList.add('hidden');
         openSettingsModal(); // Refresh UI
     } catch (e) {
-        alert('操作失败: ' + e);
+        alert(t('alert-op-fail') + e);
     }
 }
 
+// Extra Settings Logic
+function initSettings() {
+    const autostartCb = document.getElementById('settings-autostart');
+    autostartCb.addEventListener('change', async (e) => {
+        try {
+            if (e.target.checked) {
+                await enable();
+            } else {
+                await disable();
+            }
+        } catch (err) {
+            console.error('Autostart error', err);
+            e.target.checked = !e.target.checked; // Revert
+        }
+    });
+
+    const langSelect = document.getElementById('settings-language');
+    langSelect.addEventListener('change', (e) => {
+        setLanguage(e.target.value);
+        // Refresh things like placeholders or re-render list if needed
+        loadPasswords();
+    });
+}
+
 async function removeDbPassword() {
-    if (!confirm('确定要取消密码保护吗？取消后任何人都可以访问您的数据。')) {
+    if (!confirm(t('confirm-remove-pass'))) {
         return;
     }
 
     try {
         await invoke('remove_db_password');
         isDbProtected = false;
-        showToast('密码保护已取消');
+        showToast(t('toast-saved'));
         openSettingsModal(); // Refresh UI
     } catch (e) {
-        alert('操作失败: ' + e);
+        alert(t('alert-op-fail') + e);
     }
 }

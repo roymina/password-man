@@ -10,6 +10,7 @@ pub struct Password {
     pub username: Option<String>,
     pub password: String,
     pub note: Option<String>,
+    pub url: Option<String>,
     pub pinned: bool,
 }
 
@@ -71,6 +72,8 @@ impl DbState {
             Ok(_) => {
                 // Try to add pinned column if it doesn't exist
                 let _ = conn.execute("ALTER TABLE passwords ADD COLUMN pinned BOOLEAN DEFAULT 0", []);
+                // Try to add url column if it doesn't exist
+                let _ = conn.execute("ALTER TABLE passwords ADD COLUMN url TEXT", []);
                 Ok(())
             },
             Err(e) => {
@@ -109,7 +112,7 @@ pub fn get_passwords(state: State<AppState>, search: Option<String>) -> Result<V
 
     if let Some(s) = search {
         let pattern = format!("%{}%", s);
-        let mut stmt = conn.prepare("SELECT id, name, username, password, note, pinned FROM passwords WHERE name LIKE ?1 OR username LIKE ?1 OR note LIKE ?1 ORDER BY pinned DESC, id DESC").map_err(|e: rusqlite::Error| e.to_string())?;
+        let mut stmt = conn.prepare("SELECT id, name, username, password, note, pinned, url FROM passwords WHERE name LIKE ?1 OR username LIKE ?1 OR note LIKE ?1 OR url LIKE ?1 ORDER BY pinned DESC, id DESC").map_err(|e: rusqlite::Error| e.to_string())?;
         let rows = stmt.query_map(params![pattern], |row: &rusqlite::Row| {
             Ok(Password {
                 id: row.get(0)?,
@@ -118,6 +121,7 @@ pub fn get_passwords(state: State<AppState>, search: Option<String>) -> Result<V
                 password: row.get(3)?,
                 note: row.get(4)?,
                 pinned: row.get(5).unwrap_or(false),
+                url: row.get(6).unwrap_or(None),
             })
         }).map_err(|e: rusqlite::Error| e.to_string())?;
         
@@ -126,7 +130,7 @@ pub fn get_passwords(state: State<AppState>, search: Option<String>) -> Result<V
             passwords.push(password);
         }
     } else {
-        let mut stmt = conn.prepare("SELECT id, name, username, password, note, pinned FROM passwords ORDER BY pinned DESC, id DESC").map_err(|e: rusqlite::Error| e.to_string())?;
+        let mut stmt = conn.prepare("SELECT id, name, username, password, note, pinned, url FROM passwords ORDER BY pinned DESC, id DESC").map_err(|e: rusqlite::Error| e.to_string())?;
         let rows = stmt.query_map([], |row: &rusqlite::Row| {
             Ok(Password {
                 id: row.get(0)?,
@@ -135,6 +139,7 @@ pub fn get_passwords(state: State<AppState>, search: Option<String>) -> Result<V
                 password: row.get(3)?,
                 note: row.get(4)?,
                 pinned: row.get(5).unwrap_or(false),
+                url: row.get(6).unwrap_or(None),
             })
         }).map_err(|e: rusqlite::Error| e.to_string())?;
         
@@ -148,29 +153,29 @@ pub fn get_passwords(state: State<AppState>, search: Option<String>) -> Result<V
 }
 
 #[tauri::command]
-pub fn add_password(state: State<AppState>, name: String, username: Option<String>, password: String, note: Option<String>) -> Result<(), String> {
+pub fn add_password(state: State<AppState>, name: String, username: Option<String>, password: String, note: Option<String>, url: Option<String>) -> Result<(), String> {
     let key_guard = state.db_key.lock().unwrap();
     let key = key_guard.as_deref();
     
     let db = DbState::new();
     let conn = db.get_connection(key).map_err(|e| e.to_string())?;
     conn.execute(
-        "INSERT INTO passwords (name, username, password, note, pinned) VALUES (?1, ?2, ?3, ?4, 0)",
-        params![name, username, password, note],
+        "INSERT INTO passwords (name, username, password, note, url, pinned) VALUES (?1, ?2, ?3, ?4, ?5, 0)",
+        params![name, username, password, note, url],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
-pub fn update_password(state: State<AppState>, id: i32, name: String, username: Option<String>, password: String, note: Option<String>) -> Result<(), String> {
+pub fn update_password(state: State<AppState>, id: i32, name: String, username: Option<String>, password: String, note: Option<String>, url: Option<String>) -> Result<(), String> {
     let key_guard = state.db_key.lock().unwrap();
     let key = key_guard.as_deref();
 
     let db = DbState::new();
     let conn = db.get_connection(key).map_err(|e| e.to_string())?;
     conn.execute(
-        "UPDATE passwords SET name = ?1, username = ?2, password = ?3, note = ?4 WHERE id = ?5",
-        params![name, username, password, note, id],
+        "UPDATE passwords SET name = ?1, username = ?2, password = ?3, note = ?4, url = ?5 WHERE id = ?6",
+        params![name, username, password, note, url, id],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }

@@ -13,29 +13,31 @@
   <div class="header">
     <h2>PasswordMan</h2>
     <div>
-      <button id="theme-toggle" title="Switch Theme" class="action-btn">
+      <button id="theme-toggle" title="Switch Theme" class="action-btn" data-i18n-title="tooltip-theme">
         <img src="assets/solar--sun-2-line-duotone.svg" alt="Switch Theme">
       </button>
-      <button id="settings-btn" title="System Settings" class="action-btn" style="margin-left: 10px;">
+      <button id="settings-btn" title="System Settings" class="action-btn" style="margin-left: 10px;" data-i18n-title="tooltip-settings">
         <img src="assets/solar--tuning-broken.svg" alt="Settings">
       </button>
     </div>
   </div>
 
   <div class="controls">
-    <input type="text" id="search-input" placeholder="输入密码名称关键词查询" />
-    <button id="add-btn" title="Add Password">+</button>
+    <input type="text" id="search-input" placeholder="Search passwords..." data-i18n="search-placeholder" />
+    <button id="add-btn" title="Add Password" data-i18n="add-btn">+</button>
   </div>
 
   <div class="table-container">
     <table>
       <thead>
         <tr>
-          <th>密码名称</th>
-          <th>用户名</th>
-          <th>密码</th>
-          <th>备注</th>
-          <th>操作</th>
+        <tr>
+          <th data-i18n="th-name">Name</th>
+          <th data-i18n="th-username">Username</th>
+          <th data-i18n="th-url">URL</th>
+          <th data-i18n="th-password">Password</th>
+          <th data-i18n="th-note">Note</th>
+          <th data-i18n="th-action">Action</th>
         </tr>
       </thead>
       <tbody id="password-list">
@@ -47,27 +49,30 @@
   <!-- Modal for Add/Edit -->
   <div id="modal" class="modal hidden">
     <div class="modal-content">
-      <h3 id="modal-title">添加密码</h3>
+      <h3 id="modal-title" data-i18n="modal-add-title">Add Password</h3>
       <input type="hidden" id="modal-id" />
 
-      <label>密码名称</label>
+      <label data-i18n="label-name">Name</label>
       <input type="text" id="modal-name" required />
 
-      <label>用户名</label>
+      <label data-i18n="label-username">Username</label>
       <input type="text" id="modal-username" />
 
-      <label>密码</label>
+      <label data-i18n="label-url">URL</label>
+      <input type="text" id="modal-url" />
+
+      <label data-i18n="label-password">Password</label>
       <div class="password-input-group">
         <input type="text" id="modal-password" required />
         <button id="modal-gen-pwd" type="button" title="Generate">🎲</button>
       </div>
 
-      <label>备注</label>
+      <label data-i18n="label-note">Note</label>
       <textarea id="modal-note"></textarea>
 
       <div class="modal-actions">
-        <button id="modal-cancel">取消</button>
-        <button id="modal-save" class="primary">保存</button>
+        <button id="modal-cancel" data-i18n="btn-cancel">Cancel</button>
+        <button id="modal-save" class="primary" data-i18n="btn-save">Save</button>
       </div>
     </div>
   </div>
@@ -75,24 +80,39 @@
   <!-- Modal for Settings -->
   <div id="settings-modal" class="modal hidden">
     <div class="modal-content">
-      <h3>系统设置</h3>
+      <h3 data-i18n="settings-title">Settings</h3>
 
       <div class="settings-section">
-        <h4>安全设置</h4>
-        <p class="settings-desc">设置主密码以保护您的数据库文件。</p>
+        <h4 data-i18n="sec-general">General</h4>
+        <div class="setting-item">
+            <input type="checkbox" id="settings-autostart">
+            <label for="settings-autostart" data-i18n="label-autostart">Start on Boot</label>
+        </div>
+        <div class="setting-item" style="margin-top: 10px;">
+            <label data-i18n="label-language" style="display: block; margin-bottom: 5px;">Language</label>
+            <select id="settings-language" style="width: 100%; padding: 5px;">
+                <option value="en">English (US)</option>
+                <option value="zh">简体中文</option>
+            </select>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4 data-i18n="sec-security">Security</h4>
+        <p class="settings-desc" data-i18n="desc-security">Set a master password to protect your database.</p>
 
         <div id="settings-no-pass" class="hidden">
-          <button id="btn-set-pass" class="primary" style="width: 100%">启用密码保护</button>
+          <button id="btn-set-pass" class="primary" style="width: 100%" data-i18n="btn-enable-pass">Enable Protection</button>
         </div>
 
         <div id="settings-has-pass" class="hidden">
-          <button id="btn-change-pass" style="width: 100%; margin-bottom: 10px;">修改主密码</button>
-          <button id="btn-remove-pass" style="background-color: #ff4444; color: white; width: 100%">取消密码保护</button>
+          <button id="btn-change-pass" style="width: 100%; margin-bottom: 10px;" data-i18n="btn-change-pass">Change Master Password</button>
+          <button id="btn-remove-pass" style="background-color: #ff4444; color: white; width: 100%" data-i18n="btn-remove-pass">Remove Protection</button>
         </div>
       </div>
 
       <div class="modal-actions">
-        <button id="settings-close">关闭</button>
+        <button id="settings-close" data-i18n="btn-close">Close</button>
       </div>
     </div>
   </div>
@@ -100,13 +120,13 @@
   <!-- Modal for Unlock -->
   <div id="unlock-modal" class="modal hidden" style="z-index: 2000;">
     <div class="modal-content">
-      <h3>解锁数据库</h3>
-      <p style="font-size: 0.9em; color: var(--text-color);">请输入主密码以访问数据。</p>
+      <h3 data-i18n="unlock-title">Unlock Database</h3>
+      <p style="font-size: 0.9em; color: var(--text-color);" data-i18n="unlock-desc">Please enter master password.</p>
 
-      <input type="password" id="unlock-password" placeholder="主密码" />
+      <input type="password" id="unlock-password" placeholder="Master Password" data-i18n="unlock-placeholder" />
 
       <div class="modal-actions">
-        <button id="btn-unlock" class="primary">解锁</button>
+        <button id="btn-unlock" class="primary" data-i18n="btn-unlock">Unlock</button>
       </div>
     </div>
   </div>
@@ -114,31 +134,31 @@
   <!-- Modal for Set/Change Password input -->
   <div id="pass-input-modal" class="modal hidden" style="z-index: 1500;">
     <div class="modal-content">
-      <h3 id="pass-input-title">设置密码</h3>
-      <label>输入新密码</label>
+      <h3 id="pass-input-title" data-i18n="pass-set-title">Set Password</h3>
+      <label data-i18n="label-new-pass">New Password</label>
       <div class="password-input-group">
         <input type="password" id="new-pass-1" />
         <button type="button" class="action-btn" id="toggle-new-pass-1"><img
             src="assets/solar--eye-outline.svg"></button>
       </div>
-      <label>确认新密码</label>
+      <label data-i18n="label-confirm-pass">Confirm Password</label>
       <div class="password-input-group">
         <input type="password" id="new-pass-2" />
       </div>
 
       <div class="modal-actions">
-        <button id="pass-input-cancel">取消</button>
-        <button id="pass-input-save" class="primary">确定</button>
+        <button id="pass-input-cancel" data-i18n="btn-cancel">Cancel</button>
+        <button id="pass-input-save" class="primary" data-i18n="btn-confirm">Confirm</button>
       </div>
     </div>
   </div>
   <div id="confirm-modal" class="modal hidden" style="z-index: 3000;">
     <div class="modal-content" style="width: 300px;">
-      <h3 id="confirm-title">确认</h3>
-      <p id="confirm-message" style="margin: 15px 0; color: var(--text-color);">Are you sure?</p>
+      <h3 id="confirm-title" data-i18n="confirm-title">Confirm</h3>
+      <p id="confirm-message" style="margin: 15px 0; color: var(--text-color);" data-i18n="confirm-msg">Are you sure?</p>
       <div class="modal-actions">
-        <button id="confirm-cancel">取消</button>
-        <button id="confirm-ok" class="primary" style="background-color: #ff4444;">确定</button>
+        <button id="confirm-cancel" data-i18n="btn-cancel">Cancel</button>
+        <button id="confirm-ok" class="primary" style="background-color: #ff4444;" data-i18n="btn-confirm">Confirm</button>
       </div>
     </div>
   </div>

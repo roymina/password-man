@@ -142,6 +142,10 @@ tbody tr:hover {
   display: block;
 }
 
+td .action-btn {
+  transform: scale(0.8);
+}
+
 /* In dark mode, maybe invert icons if they are black SVG? */
 /* The icons seem to be colored or outline. */
 /* Using filter: invert(1) might be needed if they are black on transparent and we are in dark mode. */
