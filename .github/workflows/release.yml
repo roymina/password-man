@@ -48,9 +48,14 @@ jobs:
       - name: install dependencies (windows only)
         if: matrix.platform == 'windows-latest'
         run: |
-          choco install openssl
-          # Set OPENSSL_DIR for compilation if needed, though 'vendored' feature usually handles it.
-          echo "OPENSSL_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
+          # Strawberry Perl is pre-installed on windows-latest runner and required for bundled-sqlcipher-vendored-openssl
+          # We don't need to manually install OpenSSL because we are using 'vendored-openssl' feature which builds it from source using Perl.
+          perl --version
+          
+          # Remove any potential conflicting environment variables if they exist
+          Remove-Item Env:\OPENSSL_DIR -ErrorAction SilentlyContinue
+          Remove-Item Env:\OPENSSL_LIB_DIR -ErrorAction SilentlyContinue
+          Remove-Item Env:\OPENSSL_INCLUDE_DIR -ErrorAction SilentlyContinue
 
       - name: install frontend dependencies
         run: pnpm install
