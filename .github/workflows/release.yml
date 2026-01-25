@@ -57,6 +57,7 @@ jobs:
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
+        id: tauri_build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -66,3 +67,21 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      # Step to build and upload Portable version (only for Windows)
+      - name: Build Portable Version (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: powershell
+        run: |
+          pnpm portable
+          Compress-Archive -Path PasswordMan-Portable -DestinationPath PasswordMan-Portable.zip
+
+      - name: Upload Portable Version (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: PasswordMan-Portable.zip
+          tag_name: ${{ github.ref_name }}
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
