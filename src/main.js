@@ -1,11 +1,6 @@
 const { invoke } = window.__TAURI__.core;
 import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
-const autostart = window.__TAURI__.plugin && window.__TAURI__.plugin.autostart ? window.__TAURI__.plugin.autostart : {
-    enable: async () => console.warn('Autostart plugin not found'),
-    isEnabled: async () => false,
-    disable: async () => console.warn('Autostart plugin not found')
-};
-const { enable, isEnabled, disable } = autostart;
+import { enable, isEnabled, disable } from '@tauri-apps/plugin-autostart';
 
 
 
@@ -350,6 +345,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     initTheme();
     loadPasswords();
     initSettings();
+    initAutostart();
 
     searchInput.addEventListener('input', loadPasswords);
 
@@ -415,6 +411,17 @@ function handleConfirmOk() {
 }
 
 // Settings & Security Logic
+
+// Initialize autostart checkbox state on load
+async function initAutostart() {
+    const autostartCb = document.getElementById('settings-autostart');
+    try {
+        const enabled = await isEnabled();
+        autostartCb.checked = enabled;
+    } catch (err) {
+        console.error('Failed to get autostart state:', err);
+    }
+}
 
 // Unlock
 async function unlockDb() {

@@ -19,6 +19,9 @@
       "csp": null
     }
   },
+  "plugins": {
+    "autostart": {}
+  },
   "bundle": {
     "active": true,
     "targets": "all",
