@@ -6,6 +6,9 @@ use tauri::{
     Manager,
 };
 
+#[cfg(target_os = "windows")]
+use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -22,7 +25,10 @@ pub fn run() {
             db::toggle_pin_password,
             db::unlock_db,
             db::set_db_password,
-            db::remove_db_password
+            db::remove_db_password,
+            autostart_is_enabled,
+            autostart_enable,
+            autostart_disable
         ])
         .setup(|app| {
 // Initialize Database
@@ -74,4 +80,72 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn autostart_is_enabled(app: tauri::AppHandle) -> Result<bool, String> {
+    #[cfg(target_os = "windows")]
+    {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let run_key = hkcu
+            .open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Run")
+            .map_err(|e| e.to_string())?;
+        let value_name = app.package_info().name.clone();
+        let value: Result<String, _> = run_key.get_value(&value_name);
+        return Ok(value.is_ok());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = app; // silence unused warnings
+        Err("autostart is only supported via registry on Windows".into())
+    }
+}
+
+#[tauri::command]
+fn autostart_enable(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let (run_key, _) = hkcu
+            .create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Run")
+            .map_err(|e| e.to_string())?;
+
+        let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
+        let value_name = app.package_info().name.clone();
+        let value = format!("\"{}\"", exe_path.display());
+        run_key
+            .set_value(value_name, &value)
+            .map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = app;
+        Err("autostart is only supported via registry on Windows".into())
+    }
+}
+
+#[tauri::command]
+fn autostart_disable(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let run_key = hkcu
+            .open_subkey_with_flags(
+                "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                winreg::enums::KEY_WRITE,
+            )
+            .map_err(|e| e.to_string())?;
+        let value_name = app.package_info().name.clone();
+        let _ = run_key.delete_value(value_name);
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = app;
+        Err("autostart is only supported via registry on Windows".into())
+    }
 }

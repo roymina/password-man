@@ -1,6 +1,71 @@
 const { invoke } = window.__TAURI__.core;
 import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
-import { enable, isEnabled, disable } from '@tauri-apps/plugin-autostart';
+
+let autostartApi = null;
+
+async function getAutostartApi() {
+    if (autostartApi) return autostartApi;
+
+    // Prefer global plugin API when available
+    if (window.__TAURI__?.plugin?.autostart) {
+        autostartApi = window.__TAURI__.plugin.autostart;
+        return autostartApi;
+    }
+
+    // Fallback to dynamic import (works when a bundler is present)
+    try {
+        autostartApi = await import('@tauri-apps/plugin-autostart');
+        return autostartApi;
+    } catch (err) {
+        console.warn('Autostart plugin not available:', err);
+        autostartApi = null;
+        return null;
+    }
+}
+
+async function autostartIsEnabled() {
+    try {
+        return await invoke('autostart_is_enabled');
+    } catch (err) {
+        const api = await getAutostartApi();
+        if (!api?.isEnabled) return false;
+        return api.isEnabled();
+    }
+}
+
+async function autostartEnable() {
+    try {
+        return await invoke('autostart_enable');
+    } catch (err) {
+        const api = await getAutostartApi();
+        if (!api?.enable) return;
+        return api.enable();
+    }
+}
+
+async function autostartDisable() {
+    try {
+        return await invoke('autostart_disable');
+    } catch (err) {
+        const api = await getAutostartApi();
+        if (!api?.disable) return;
+        return api.disable();
+    }
+}
+
+function addSettingsLog(message) {
+    const list = document.getElementById('settings-log-list');
+    if (!list) return;
+    const time = new Date().toLocaleTimeString();
+    const item = document.createElement('li');
+    item.textContent = `[${time}] ${message}`;
+    list.prepend(item);
+
+    // Keep last 20 entries
+    while (list.children.length > 20) {
+        list.removeChild(list.lastChild);
+    }
+}
 
 
 
@@ -416,10 +481,13 @@ function handleConfirmOk() {
 async function initAutostart() {
     const autostartCb = document.getElementById('settings-autostart');
     try {
-        const enabled = await isEnabled();
+        const enabled = await autostartIsEnabled();
         autostartCb.checked = enabled;
+        addSettingsLog(`开机启动状态：${enabled ? '已开启' : '未开启'}`);
     } catch (err) {
         console.error('Failed to get autostart state:', err);
+        autostartCb.disabled = true;
+        addSettingsLog('读取开机启动状态失败，已禁用开关');
     }
 }
 
@@ -461,7 +529,10 @@ function openSettingsModal() {
 
     // Update Autostart Checkbox
     const autostartCb = document.getElementById('settings-autostart');
-    isEnabled().then(enabled => autostartCb.checked = enabled);
+    autostartIsEnabled().then(enabled => {
+        autostartCb.checked = enabled;
+        addSettingsLog(`开机启动状态：${enabled ? '已开启' : '未开启'}`);
+    });
 
     // Update Language Selection
     const langSelect = document.getElementById('settings-language');
@@ -527,14 +598,19 @@ function initSettings() {
     const autostartCb = document.getElementById('settings-autostart');
     autostartCb.addEventListener('change', async (e) => {
         try {
+            addSettingsLog(`正在${e.target.checked ? '开启' : '关闭'}开机启动...`);
             if (e.target.checked) {
-                await enable();
+                await autostartEnable();
             } else {
-                await disable();
+                await autostartDisable();
             }
+            const enabled = await autostartIsEnabled();
+            autostartCb.checked = enabled;
+            addSettingsLog(`开机启动设置结果：${enabled ? '已开启' : '未开启'}`);
         } catch (err) {
             console.error('Autostart error', err);
             e.target.checked = !e.target.checked; // Revert
+            addSettingsLog('开机启动设置失败，已回退状态');
         }
     });
 

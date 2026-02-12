@@ -20,7 +20,7 @@
     }
   },
   "plugins": {
-    "autostart": {}
+    "autostart": null
   },
   "bundle": {
     "active": true,

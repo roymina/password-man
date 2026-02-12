@@ -287,3 +287,33 @@ body.dark-theme .action-btn.delete-btn img {
 body.dark-theme .settings-desc {
   color: #aaa;
 }
+
+.settings-log {
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-color);
+  border-radius: 6px;
+  padding: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+.settings-log ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-log li {
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.settings-log li:last-child {
+  border-bottom: none;
+}
+
+.settings-log-section {
+  display: none;
+}
