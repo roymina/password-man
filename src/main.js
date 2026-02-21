@@ -158,78 +158,24 @@ function renderPasswords() {
             tdName.textContent = pwd.name;
         }
 
-        // Username & URL
+        // Username
         const tdUser = document.createElement('td');
-        const userDiv = document.createElement('div');
-        userDiv.style.display = 'flex';
-        userDiv.style.alignItems = 'center';
-        userDiv.style.gap = '5px';
-        
-        const usernameText = document.createElement('span');
-        usernameText.textContent = pwd.username || '-';
-        userDiv.appendChild(usernameText);
-
-        if (pwd.username) {
-             const copyUserBtn = createIconBtn('assets/solar--copy-line-duotone.svg', t('toast-copied'), () => {
-                navigator.clipboard.writeText(pwd.username).then(() => {
-                    showToast(t('toast-copied'));
-                }).catch(err => {
-                    console.error('Copy failed', err);
-                    showToast(t('toast-copy-fail'));
-                });
-            });
-            // Make it consistent with other buttons
-            // copyUserBtn.style.transform = 'scale(0.8)';
-            userDiv.appendChild(copyUserBtn);
-        }
-        tdUser.appendChild(userDiv);
+        tdUser.textContent = pwd.username || '-';
 
 
 
         const tdUrl = document.createElement('td');
         if (pwd.url) {
-            const urlDiv = document.createElement('div');
-            
             let finalUrl = pwd.url;
             if (!/^https?:\/\//i.test(finalUrl)) {
                 finalUrl = 'https://' + finalUrl;
             }
             
-            // Use span instead of anchor tag - no click to open
-            const urlSpan = document.createElement('span');
-            urlSpan.title = finalUrl;
-            
-            // Truncate logic
-            let displayUrl = pwd.url.replace(/^https?:\/\//, '');
-            if (displayUrl.length > 25) {
-                displayUrl = displayUrl.substring(0, 25) + '...';
-            }
-            urlSpan.textContent = '🔗 ' + displayUrl;
-            urlSpan.style.fontSize = '0.9em';
-            urlSpan.style.color = 'var(--text-color)';
-            
-            // Flex container for URL + Copy btn
-            urlDiv.style.display = 'flex';
-            urlDiv.style.alignItems = 'center';
-            urlDiv.style.gap = '5px';
-            
-            urlDiv.appendChild(urlSpan);
-
-            const copyUrlBtn = createIconBtn('assets/solar--copy-line-duotone.svg', t('toast-copied'), (e) => {
-                // Prevent row click or link click events
-                e.preventDefault();
-                e.stopPropagation();
-                navigator.clipboard.writeText(finalUrl).then(() => {
-                    showToast(t('toast-copied'));
-                }).catch(err => {
-                    console.error('Copy failed', err);
-                    showToast(t('toast-copy-fail'));
-                });
-            });
-            // copyUrlBtn.style.transform = 'scale(0.8)';
-            urlDiv.appendChild(copyUrlBtn);
-
-            tdUrl.appendChild(urlDiv);
+            // Use text content with emoji prefix
+            tdUrl.textContent = '🔗 ' + pwd.url;
+            tdUrl.title = finalUrl; // Always show full URL on hover
+        } else {
+            tdUrl.textContent = '-';
         }
 
         // Password with Toggle
@@ -271,6 +217,11 @@ function renderPasswords() {
         // Note
         const tdNote = document.createElement('td');
         tdNote.textContent = pwd.note || '';
+        
+        // Set title for cells that might overflow (browser will show tooltip only when truncated)
+        tdName.title = pwd.name;
+        tdUser.title = pwd.username || '';
+        tdUrl.title = pwd.url || '';
 
         // Actions
         const tdActions = document.createElement('td');

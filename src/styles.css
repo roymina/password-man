@@ -99,12 +99,22 @@ table {
 
 th,
 td {
-  padding: 12px;
+  padding: 12px 8px;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
 }
 
-th:last-child,
+/* Table cell text truncation - single line with ellipsis */
+td:not(:last-child) {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
+/* Don't truncate action column */
 td:last-child {
   width: 1%;
   white-space: nowrap;
