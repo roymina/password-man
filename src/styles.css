@@ -50,6 +50,10 @@ body {
   transition: background-color 0.3s, color 0.3s;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .header {
   display: flex;
   justify-content: space-between;
@@ -186,6 +190,21 @@ body.dark-theme .action-btn.delete-btn img {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.copyable-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.copyable-cell-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .password-cell span {
@@ -326,4 +345,109 @@ body.dark-theme .settings-desc {
 
 .settings-log-section {
   display: none;
+}
+
+/* ─── Tab Navigation ─────────────────────────────────────────────── */
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0;
+}
+
+.tab-btn {
+  padding: 8px 20px;
+  border: none;
+  background: none;
+  color: var(--text-color);
+  font-size: 0.95em;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  margin-bottom: -2px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab-btn:hover {
+  background: var(--row-hover);
+}
+
+.tab-btn.active {
+  color: var(--primary-color);
+  border-bottom: 2px solid var(--primary-color);
+  font-weight: 600;
+  background: none;
+}
+
+/* ─── Category Chips ─────────────────────────────────────────────── */
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.category-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-color);
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.category-chip:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.category-chip.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+/* ─── Bookmark Row ───────────────────────────────────────────────── */
+.favicon {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-right: 6px;
+  border-radius: 2px;
+}
+
+.bm-title-cell {
+  display: flex;
+  align-items: center;
+}
+
+.bm-url-link {
+  color: var(--primary-color);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bm-url-link:hover {
+  text-decoration: underline;
+}
+
+/* Bookmark controls layout */
+#bookmark-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+#bookmark-controls input {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border-radius: 4px;
 }

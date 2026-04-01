@@ -23,12 +23,32 @@
     </div>
   </div>
 
-  <div class="controls">
+  <!-- Tab Navigation -->
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-passwords" data-i18n="tab-passwords">Passwords</button>
+    <button class="tab-btn" id="tab-bookmarks" data-i18n="tab-bookmarks">Bookmarks</button>
+  </div>
+
+  <!-- Password Controls -->
+  <div class="controls" id="password-controls">
     <input type="text" id="search-input" placeholder="Search passwords..." data-i18n="search-placeholder" />
     <button id="add-btn" title="Add Password" data-i18n="add-btn">+</button>
   </div>
 
-  <div class="table-container">
+  <!-- Bookmark Controls -->
+  <div class="controls hidden" id="bookmark-controls">
+    <input type="text" id="bookmark-search-input" placeholder="Search bookmarks..." data-i18n="bookmark-search-placeholder" />
+    <button id="bookmark-add-btn" data-i18n="bookmark-add-btn">+ Add</button>
+    <button id="bookmark-import-btn" data-i18n="bookmark-import-btn">Import</button>
+    <button id="bookmark-export-btn" data-i18n="bookmark-export-btn">Export</button>
+    <input type="file" id="bookmark-import-file" accept=".html" class="hidden" />
+  </div>
+
+  <!-- Category Chips -->
+  <div id="category-chips" class="category-chips hidden"></div>
+
+  <!-- Password Table -->
+  <div class="table-container" id="password-section">
     <table>
       <thead>
         <tr>
@@ -46,7 +66,25 @@
     </table>
   </div>
 
-  <!-- Modal for Add/Edit -->
+  <!-- Bookmark Table -->
+  <div class="table-container hidden" id="bookmark-section">
+    <table>
+      <thead>
+        <tr>
+          <th data-i18n="bm-th-title">Title</th>
+          <th data-i18n="bm-th-url">URL</th>
+          <th data-i18n="bm-th-category">Category</th>
+          <th data-i18n="bm-th-note">Note</th>
+          <th data-i18n="bm-th-action">Action</th>
+        </tr>
+      </thead>
+      <tbody id="bookmark-list">
+        <!-- Rows will be injected here -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Modal for Add/Edit Password -->
   <div id="modal" class="modal hidden">
     <div class="modal-content">
       <h3 id="modal-title" data-i18n="modal-add-title">Add Password</h3>
@@ -73,6 +111,32 @@
       <div class="modal-actions">
         <button id="modal-cancel" data-i18n="btn-cancel">Cancel</button>
         <button id="modal-save" class="primary" data-i18n="btn-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Add/Edit Bookmark -->
+  <div id="bookmark-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="bm-modal-title" data-i18n="bm-modal-add-title">Add Bookmark</h3>
+      <input type="hidden" id="bm-modal-id" />
+
+      <label data-i18n="bm-label-title">Title</label>
+      <input type="text" id="bm-modal-title-input" required />
+
+      <label data-i18n="bm-label-url">URL</label>
+      <input type="text" id="bm-modal-url" required />
+
+      <label data-i18n="bm-label-category">Category</label>
+      <input type="text" id="bm-modal-category" list="bm-category-suggestions" />
+      <datalist id="bm-category-suggestions"></datalist>
+
+      <label data-i18n="bm-label-note">Note</label>
+      <textarea id="bm-modal-note"></textarea>
+
+      <div class="modal-actions">
+        <button id="bm-modal-cancel" data-i18n="btn-cancel">Cancel</button>
+        <button id="bm-modal-save" class="primary" data-i18n="btn-save">Save</button>
       </div>
     </div>
   </div>
@@ -158,6 +222,7 @@
       </div>
     </div>
   </div>
+
   <div id="confirm-modal" class="modal hidden" style="z-index: 3000;">
     <div class="modal-content" style="width: 300px;">
       <h3 id="confirm-title" data-i18n="confirm-title">Confirm</h3>

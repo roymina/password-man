@@ -26,6 +26,14 @@ pub fn run() {
             db::unlock_db,
             db::set_db_password,
             db::remove_db_password,
+            db::get_bookmarks,
+            db::add_bookmark,
+            db::update_bookmark,
+            db::delete_bookmark,
+            db::toggle_pin_bookmark,
+            db::get_bookmark_categories,
+            db::export_bookmarks,
+            open_url,
             autostart_is_enabled,
             autostart_enable,
             autostart_disable
@@ -80,6 +88,12 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn open_url(url: String, app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener().open_url(url, None::<String>).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
