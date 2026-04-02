@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
   <meta charset="UTF-8" />
@@ -14,153 +14,168 @@
   <div class="header">
     <h2>PasswordMan</h2>
     <div>
-      <button id="theme-toggle" title="Switch Theme" class="action-btn" data-i18n-title="tooltip-theme">
-        <img src="assets/solar--sun-2-line-duotone.svg" alt="Switch Theme">
+      <button id="theme-toggle" class="action-btn" data-i18n-title="tooltip-theme" title="切换主题">
+        <img src="assets/solar--sun-2-line-duotone.svg" alt="Switch Theme" />
       </button>
-      <button id="settings-btn" title="System Settings" class="action-btn" style="margin-left: 10px;" data-i18n-title="tooltip-settings">
-        <img src="assets/solar--tuning-broken.svg" alt="Settings">
+      <button
+        id="settings-btn"
+        class="action-btn"
+        style="margin-left: 10px;"
+        data-i18n-title="tooltip-settings"
+        title="系统设置"
+      >
+        <img src="assets/solar--tuning-broken.svg" alt="Settings" />
       </button>
     </div>
   </div>
 
-  <!-- Tab Navigation -->
   <div class="tab-nav">
-    <button class="tab-btn active" id="tab-passwords" data-i18n="tab-passwords">Passwords</button>
-    <button class="tab-btn" id="tab-bookmarks" data-i18n="tab-bookmarks">Bookmarks</button>
+    <button class="tab-btn active" id="tab-passwords" data-i18n="tab-passwords">密码管理</button>
+    <button class="tab-btn" id="tab-bookmarks" data-i18n="tab-bookmarks">网址收藏</button>
   </div>
 
-  <!-- Password Controls -->
   <div class="controls" id="password-controls">
-    <input type="text" id="search-input" placeholder="Search passwords..." data-i18n="search-placeholder" />
-    <button id="add-btn" title="Add Password" data-i18n="add-btn">+</button>
+    <input type="text" id="search-input" placeholder="输入密码名称关键字查询" data-i18n="search-placeholder" />
+    <button id="add-btn" title="添加密码" data-i18n="add-btn">+</button>
   </div>
 
-  <!-- Bookmark Controls -->
   <div class="controls hidden" id="bookmark-controls">
-    <input type="text" id="bookmark-search-input" placeholder="Search bookmarks..." data-i18n="bookmark-search-placeholder" />
-    <button id="bookmark-add-btn" data-i18n="bookmark-add-btn">+ Add</button>
-    <button id="bookmark-import-btn" data-i18n="bookmark-import-btn">Import</button>
-    <button id="bookmark-export-btn" data-i18n="bookmark-export-btn">Export</button>
-    <input type="file" id="bookmark-import-file" accept=".html" class="hidden" />
+    <input
+      type="text"
+      id="bookmark-search-input"
+      placeholder="搜索收藏网址"
+      data-i18n="bookmark-search-placeholder"
+    />
+    <button id="bookmark-add-btn" data-i18n="bookmark-add-btn">+ 添加</button>
+    <button id="bookmark-group-add-btn" data-i18n="bookmark-group-add-btn">+ 添加组</button>
+    <button id="bookmark-import-btn" data-i18n="bookmark-import-btn">导入 JSON</button>
+    <button id="bookmark-export-btn" data-i18n="bookmark-export-btn">导出 JSON</button>
+    <input type="file" id="bookmark-import-file" accept=".json,application/json" class="hidden" />
   </div>
 
-  <!-- Category Chips -->
-  <div id="category-chips" class="category-chips hidden"></div>
+  <div id="bookmark-group-bar" class="bookmark-group-bar hidden"></div>
 
-  <!-- Password Table -->
   <div class="table-container" id="password-section">
     <table>
       <thead>
         <tr>
-          <th data-i18n="th-name">Name</th>
-          <th data-i18n="th-username">Username</th>
-          <th data-i18n="th-url">URL</th>
-          <th data-i18n="th-password">Password</th>
-          <th data-i18n="th-note">Note</th>
-          <th data-i18n="th-action">Action</th>
+          <th data-i18n="th-name">密码名称</th>
+          <th data-i18n="th-username">用户名</th>
+          <th data-i18n="th-url">网址</th>
+          <th data-i18n="th-password">密码</th>
+          <th data-i18n="th-note">备注</th>
+          <th data-i18n="th-action">操作</th>
         </tr>
       </thead>
-      <tbody id="password-list">
-        <!-- Rows will be injected here -->
-      </tbody>
+      <tbody id="password-list"></tbody>
     </table>
   </div>
 
-  <!-- Bookmark Table -->
   <div class="table-container hidden" id="bookmark-section">
     <table>
       <thead>
         <tr>
-          <th data-i18n="bm-th-title">Title</th>
-          <th data-i18n="bm-th-url">URL</th>
-          <th data-i18n="bm-th-category">Category</th>
-          <th data-i18n="bm-th-note">Note</th>
-          <th data-i18n="bm-th-action">Action</th>
+          <th data-i18n="bm-th-title">网站信息</th>
+          <th data-i18n="bm-th-url">网址</th>
+          <th data-i18n="bm-th-group">组</th>
+          <th data-i18n="bm-th-note">备注</th>
+          <th data-i18n="bm-th-action">操作</th>
         </tr>
       </thead>
-      <tbody id="bookmark-list">
-        <!-- Rows will be injected here -->
-      </tbody>
+      <tbody id="bookmark-list"></tbody>
     </table>
   </div>
 
-  <!-- Modal for Add/Edit Password -->
   <div id="modal" class="modal hidden">
     <div class="modal-content">
-      <h3 id="modal-title" data-i18n="modal-add-title">Add Password</h3>
+      <h3 id="modal-title" data-i18n="modal-add-title">添加</h3>
       <input type="hidden" id="modal-id" />
 
-      <label data-i18n="label-name">Name</label>
+      <label data-i18n="label-name">密码名称</label>
       <input type="text" id="modal-name" required />
 
-      <label data-i18n="label-username">Username</label>
+      <label data-i18n="label-username">用户名</label>
       <input type="text" id="modal-username" />
 
-      <label data-i18n="label-url">URL</label>
+      <label data-i18n="label-url">网址</label>
       <input type="text" id="modal-url" />
 
-      <label data-i18n="label-password">Password</label>
+      <label data-i18n="label-password">密码</label>
       <div class="password-input-group">
         <input type="text" id="modal-password" required />
-        <button id="modal-gen-pwd" type="button" title="Generate">🎲</button>
+        <button id="modal-gen-pwd" type="button" title="Generate">生成</button>
       </div>
 
-      <label data-i18n="label-note">Note</label>
+      <label data-i18n="label-note">备注</label>
       <textarea id="modal-note"></textarea>
 
       <div class="modal-actions">
-        <button id="modal-cancel" data-i18n="btn-cancel">Cancel</button>
-        <button id="modal-save" class="primary" data-i18n="btn-save">Save</button>
+        <button id="modal-cancel" data-i18n="btn-cancel">取消</button>
+        <button id="modal-save" class="primary" data-i18n="btn-save">保存</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal for Add/Edit Bookmark -->
   <div id="bookmark-modal" class="modal hidden">
     <div class="modal-content">
-      <h3 id="bm-modal-title" data-i18n="bm-modal-add-title">Add Bookmark</h3>
+      <h3 id="bm-modal-title" data-i18n="bm-modal-add-title">添加网址收藏</h3>
       <input type="hidden" id="bm-modal-id" />
 
-      <label data-i18n="bm-label-title">Title</label>
+      <label data-i18n="bm-label-title">名称</label>
       <input type="text" id="bm-modal-title-input" required />
 
-      <label data-i18n="bm-label-url">URL</label>
+      <label data-i18n="bm-label-url">网址</label>
       <input type="text" id="bm-modal-url" required />
 
-      <label data-i18n="bm-label-category">Category</label>
-      <input type="text" id="bm-modal-category" list="bm-category-suggestions" />
-      <datalist id="bm-category-suggestions"></datalist>
+      <label data-i18n="bm-label-group">组</label>
+      <select id="bm-modal-group"></select>
 
-      <label data-i18n="bm-label-note">Note</label>
+      <label data-i18n="bm-label-note">备注</label>
       <textarea id="bm-modal-note"></textarea>
 
       <div class="modal-actions">
-        <button id="bm-modal-cancel" data-i18n="btn-cancel">Cancel</button>
-        <button id="bm-modal-save" class="primary" data-i18n="btn-save">Save</button>
+        <button id="bm-modal-cancel" data-i18n="btn-cancel">取消</button>
+        <button id="bm-modal-save" class="primary" data-i18n="btn-save">保存</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal for Settings -->
+  <div id="bookmark-group-modal" class="modal hidden">
+    <div class="modal-content modal-content-sm">
+      <h3 data-i18n="bm-group-modal-title">添加组</h3>
+      <label data-i18n="bm-group-name-label">组名</label>
+      <input
+        type="text"
+        id="bookmark-group-name"
+        placeholder="请输入组名"
+        data-i18n="bm-group-name-placeholder"
+      />
+      <div class="modal-actions">
+        <button id="bookmark-group-cancel" data-i18n="btn-cancel">取消</button>
+        <button id="bookmark-group-save" class="primary" data-i18n="btn-save">保存</button>
+      </div>
+    </div>
+  </div>
+
   <div id="settings-modal" class="modal hidden">
     <div class="modal-content">
-      <h3 data-i18n="settings-title">Settings</h3>
+      <h3 data-i18n="settings-title">系统设置</h3>
 
       <div class="settings-section">
-        <h4 data-i18n="sec-general">General</h4>
+        <h4 data-i18n="sec-general">常规设置</h4>
         <div class="setting-item">
-            <input type="checkbox" id="settings-autostart">
-            <label for="settings-autostart" data-i18n="label-autostart">Start on Boot</label>
+          <input type="checkbox" id="settings-autostart" />
+          <label for="settings-autostart" data-i18n="label-autostart">开机启动</label>
         </div>
         <div class="setting-item" style="margin-top: 10px;">
-            <label data-i18n="label-language" style="display: block; margin-bottom: 5px;">Language</label>
-            <select id="settings-language" style="width: 100%; padding: 5px;">
-                <option value="en">English (US)</option>
-                <option value="zh">简体中文</option>
-            </select>
+          <label data-i18n="label-language" style="display: block; margin-bottom: 5px;">语言</label>
+          <select id="settings-language" style="width: 100%; padding: 5px;">
+            <option value="en">English</option>
+            <option value="zh">简体中文</option>
+          </select>
         </div>
         <div class="setting-item settings-log-section" style="margin-top: 10px;">
-          <label style="display: block; margin-bottom: 5px;">日志</label>
+          <label data-i18n="settings-log-label" style="display: block; margin-bottom: 5px;">日志</label>
           <div class="settings-log">
             <ul id="settings-log-list"></ul>
           </div>
@@ -168,68 +183,75 @@
       </div>
 
       <div class="settings-section">
-        <h4 data-i18n="sec-security">Security</h4>
-        <p class="settings-desc" data-i18n="desc-security">Set a master password to protect your database.</p>
+        <h4 data-i18n="sec-security">安全设置</h4>
+        <p class="settings-desc" data-i18n="desc-security">设置主密码以保护您的数据库文件。</p>
 
         <div id="settings-no-pass" class="hidden">
-          <button id="btn-set-pass" class="primary" style="width: 100%" data-i18n="btn-enable-pass">Enable Protection</button>
+          <button id="btn-set-pass" class="primary" style="width: 100%" data-i18n="btn-enable-pass">
+            启用密码保护
+          </button>
         </div>
 
         <div id="settings-has-pass" class="hidden">
-          <button id="btn-change-pass" style="width: 100%; margin-bottom: 10px;" data-i18n="btn-change-pass">Change Master Password</button>
-          <button id="btn-remove-pass" style="background-color: #ff4444; color: white; width: 100%" data-i18n="btn-remove-pass">Remove Protection</button>
+          <button id="btn-change-pass" style="width: 100%; margin-bottom: 10px;" data-i18n="btn-change-pass">
+            修改主密码
+          </button>
+          <button
+            id="btn-remove-pass"
+            style="background-color: #ff4444; color: white; width: 100%"
+            data-i18n="btn-remove-pass"
+          >
+            取消密码保护
+          </button>
         </div>
       </div>
 
       <div class="modal-actions">
-        <button id="settings-close" data-i18n="btn-close">Close</button>
+        <button id="settings-close" data-i18n="btn-close">关闭</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal for Unlock -->
   <div id="unlock-modal" class="modal hidden" style="z-index: 2000;">
     <div class="modal-content">
-      <h3 data-i18n="unlock-title">Unlock Database</h3>
-      <p style="font-size: 0.9em; color: var(--text-color);" data-i18n="unlock-desc">Please enter master password.</p>
-
-      <input type="password" id="unlock-password" placeholder="Master Password" data-i18n="unlock-placeholder" />
-
+      <h3 data-i18n="unlock-title">解锁数据库</h3>
+      <p style="font-size: 0.9em; color: var(--text-color);" data-i18n="unlock-desc">请输入主密码访问数据。</p>
+      <input type="password" id="unlock-password" placeholder="主密码" data-i18n="unlock-placeholder" />
       <div class="modal-actions">
-        <button id="btn-unlock" class="primary" data-i18n="btn-unlock">Unlock</button>
+        <button id="btn-unlock" class="primary" data-i18n="btn-unlock">解锁</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal for Set/Change Password input -->
   <div id="pass-input-modal" class="modal hidden" style="z-index: 1500;">
     <div class="modal-content">
-      <h3 id="pass-input-title" data-i18n="pass-set-title">Set Password</h3>
-      <label data-i18n="label-new-pass">New Password</label>
+      <h3 id="pass-input-title" data-i18n="pass-set-title">设置密码</h3>
+      <label data-i18n="label-new-pass">新密码</label>
       <div class="password-input-group">
         <input type="password" id="new-pass-1" />
-        <button type="button" class="action-btn" id="toggle-new-pass-1"><img
-            src="assets/solar--eye-outline.svg"></button>
+        <button type="button" class="action-btn" id="toggle-new-pass-1">
+          <img src="assets/solar--eye-outline.svg" alt="" />
+        </button>
       </div>
-      <label data-i18n="label-confirm-pass">Confirm Password</label>
+      <label data-i18n="label-confirm-pass">确认密码</label>
       <div class="password-input-group">
         <input type="password" id="new-pass-2" />
       </div>
 
       <div class="modal-actions">
-        <button id="pass-input-cancel" data-i18n="btn-cancel">Cancel</button>
-        <button id="pass-input-save" class="primary" data-i18n="btn-confirm">Confirm</button>
+        <button id="pass-input-cancel" data-i18n="btn-cancel">取消</button>
+        <button id="pass-input-save" class="primary" data-i18n="btn-confirm">确认</button>
       </div>
     </div>
   </div>
 
   <div id="confirm-modal" class="modal hidden" style="z-index: 3000;">
-    <div class="modal-content" style="width: 300px;">
-      <h3 id="confirm-title" data-i18n="confirm-title">Confirm</h3>
-      <p id="confirm-message" style="margin: 15px 0; color: var(--text-color);" data-i18n="confirm-msg">Are you sure?</p>
+    <div class="modal-content modal-content-sm">
+      <h3 id="confirm-title" data-i18n="confirm-title">确认</h3>
+      <p id="confirm-message" style="margin: 15px 0; color: var(--text-color);" data-i18n="confirm-msg">确定吗？</p>
       <div class="modal-actions">
-        <button id="confirm-cancel" data-i18n="btn-cancel">Cancel</button>
-        <button id="confirm-ok" class="primary" style="background-color: #ff4444;" data-i18n="btn-confirm">Confirm</button>
+        <button id="confirm-cancel" data-i18n="btn-cancel">取消</button>
+        <button id="confirm-ok" class="primary danger-btn" data-i18n="btn-confirm">确认</button>
       </div>
     </div>
   </div>
