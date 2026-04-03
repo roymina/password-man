@@ -208,51 +208,21 @@ function renderPasswords() {
     passwordList.innerHTML = "";
 
     currentPasswords.forEach((passwordItem) => {
-        const tr = document.createElement("tr");
-        if (passwordItem.pinned) tr.classList.add("pinned-row");
+        const card = document.createElement("article");
+        card.className = `entity-card password-card${passwordItem.pinned ? " pinned-row" : ""}`;
+        card.addEventListener("dblclick", () => openPasswordModal(passwordItem));
 
-        const tdName = document.createElement("td");
-        tdName.textContent = passwordItem.pinned ? `★ ${passwordItem.name}` : passwordItem.name;
-        tdName.title = passwordItem.name;
+        const header = document.createElement("div");
+        header.className = "entity-card-header";
 
-        const tdUser = document.createElement("td");
-        tdUser.title = passwordItem.username || "";
-        tdUser.appendChild(
-            createCopyableContent(passwordItem.username || "-", passwordItem.username || null)
-        );
+        const title = document.createElement("h3");
+        title.className = "entity-card-title";
+        title.textContent = passwordItem.pinned ? `★ ${passwordItem.name}` : passwordItem.name;
+        title.title = passwordItem.name;
 
-        const tdUrl = document.createElement("td");
-        const normalizedUrl = passwordItem.url ? normalizeUrl(passwordItem.url) : null;
-        tdUrl.title = normalizedUrl || "";
-        tdUrl.appendChild(createCopyableContent(passwordItem.url || "-", normalizedUrl));
+        const actions = document.createElement("div");
+        actions.className = "entity-card-actions";
 
-        const tdPassword = document.createElement("td");
-        tdPassword.className = "password-cell";
-        const passwordSpan = document.createElement("span");
-        passwordSpan.dataset.real = passwordItem.password;
-        passwordSpan.dataset.mask = "••••••";
-        passwordSpan.dataset.visible = "false";
-        passwordSpan.textContent = passwordSpan.dataset.mask;
-
-        tdPassword.appendChild(passwordSpan);
-        tdPassword.appendChild(
-            createIconButton("assets/solar--eye-outline.svg", t("tooltip-show-hide"), () => {
-                const visible = passwordSpan.dataset.visible === "true";
-                passwordSpan.textContent = visible ? passwordSpan.dataset.mask : passwordSpan.dataset.real;
-                passwordSpan.dataset.visible = visible ? "false" : "true";
-            })
-        );
-        tdPassword.appendChild(
-            createIconButton("assets/solar--copy-line-duotone.svg", t("tooltip-copy"), () =>
-                copyToClipboard(passwordItem.password)
-            )
-        );
-
-        const tdNote = document.createElement("td");
-        tdNote.textContent = passwordItem.note || "";
-        tdNote.title = passwordItem.note || "";
-
-        const tdActions = document.createElement("td");
         const pinBtn = createIconButton(
             "assets/solar--arrow-to-top-left-bold.svg",
             passwordItem.pinned ? t("tooltip-unpin") : t("tooltip-pin"),
@@ -267,11 +237,93 @@ function renderPasswords() {
             deletePassword(passwordItem.id)
         );
         deleteBtn.classList.add("delete-btn");
+        actions.append(pinBtn, editBtn, deleteBtn);
+        header.append(title, actions);
 
-        tdActions.append(pinBtn, editBtn, deleteBtn);
-        tr.append(tdName, tdUser, tdUrl, tdPassword, tdNote, tdActions);
-        passwordList.appendChild(tr);
+        const content = document.createElement("div");
+        content.className = "entity-card-content";
+
+        content.appendChild(
+            createDetailField(t("th-username"), passwordItem.username || "-", passwordItem.username || null)
+        );
+        const normalizedUrl = passwordItem.url ? normalizeUrl(passwordItem.url) : null;
+        content.appendChild(createDetailField(t("th-url"), passwordItem.url || "-", normalizedUrl));
+
+        const passwordField = document.createElement("div");
+        passwordField.className = "detail-field";
+
+        const passwordLabel = document.createElement("span");
+        passwordLabel.className = "detail-field-label";
+        passwordLabel.textContent = t("th-password");
+
+        const passwordValue = document.createElement("div");
+        passwordValue.className = "detail-field-value password-card-secret";
+
+        const passwordSpan = document.createElement("span");
+        passwordSpan.dataset.real = passwordItem.password;
+        passwordSpan.dataset.mask = "••••••";
+        passwordSpan.dataset.visible = "false";
+        passwordSpan.textContent = passwordSpan.dataset.mask;
+        passwordValue.appendChild(passwordSpan);
+        passwordValue.appendChild(
+            createIconButton("assets/solar--eye-outline.svg", t("tooltip-show-hide"), () => {
+                const visible = passwordSpan.dataset.visible === "true";
+                passwordSpan.textContent = visible ? passwordSpan.dataset.mask : passwordSpan.dataset.real;
+                passwordSpan.dataset.visible = visible ? "false" : "true";
+            })
+        );
+        passwordValue.appendChild(
+            createIconButton("assets/solar--copy-line-duotone.svg", t("tooltip-copy"), () =>
+                copyToClipboard(passwordItem.password)
+            )
+        );
+        passwordField.append(passwordLabel, passwordValue);
+        content.appendChild(passwordField);
+
+        content.appendChild(
+            createTextBlock(t("th-note"), passwordItem.note || t("common-no-note"), {
+                compact: true,
+                empty: !passwordItem.note,
+            })
+        );
+
+        card.append(header, content);
+        passwordList.appendChild(card);
     });
+}
+
+function createDetailField(label, textValue, copyValue = null) {
+    const field = document.createElement("div");
+    field.className = "detail-field";
+
+    const labelNode = document.createElement("span");
+    labelNode.className = "detail-field-label";
+    labelNode.textContent = label;
+
+    const value = createCopyableContent(textValue, copyValue);
+    value.classList.add("detail-field-value");
+
+    field.append(labelNode, value);
+    return field;
+}
+
+function createTextBlock(label, text, options = {}) {
+    const block = document.createElement("div");
+    block.className = "text-block";
+    if (options.compact) block.classList.add("compact");
+    if (options.empty) block.classList.add("empty");
+
+    const labelNode = document.createElement("span");
+    labelNode.className = "detail-field-label";
+    labelNode.textContent = label;
+
+    const textNode = document.createElement("p");
+    textNode.className = "text-block-content";
+    textNode.textContent = text;
+    textNode.title = text;
+
+    block.append(labelNode, textNode);
+    return block;
 }
 
 function openPasswordModal(passwordItem = null) {
@@ -433,30 +485,16 @@ function renderBookmarks() {
     bookmarkList.innerHTML = "";
 
     currentBookmarks.forEach((bookmark) => {
-        const tr = document.createElement("tr");
-        if (bookmark.pinned) tr.classList.add("pinned-row");
-        tr.addEventListener("dblclick", () => openBookmarkUrl(bookmark.url));
+        const card = document.createElement("article");
+        card.className = `entity-card bookmark-entity-card${bookmark.pinned ? " pinned-row" : ""}`;
+        card.addEventListener("dblclick", () => openBookmarkUrl(bookmark.url));
 
-        const titleCell = document.createElement("td");
-        titleCell.title = bookmark.site_title || bookmark.title;
-        titleCell.appendChild(createBookmarkCard(bookmark));
+        const header = document.createElement("div");
+        header.className = "entity-card-header";
+        header.appendChild(createBookmarkCard(bookmark));
 
-        const urlCell = document.createElement("td");
-        urlCell.appendChild(createBookmarkUrlCell(bookmark.url));
-        urlCell.title = normalizeUrl(bookmark.url);
-
-        const groupCell = document.createElement("td");
-        const groupLabel = document.createElement("span");
-        groupLabel.className = "bookmark-group-label";
-        groupLabel.textContent = bookmark.group_name || t("bm-no-group");
-        groupCell.appendChild(groupLabel);
-
-        const noteCell = document.createElement("td");
-        noteCell.className = "bookmark-note-cell";
-        noteCell.textContent = bookmark.note || "";
-        noteCell.title = bookmark.note || "";
-
-        const actionCell = document.createElement("td");
+        const actionCell = document.createElement("div");
+        actionCell.className = "entity-card-actions";
         const openBtn = createIconButton("assets/solar--arrow-to-top-left-bold.svg", t("bm-open-tooltip"), () =>
             openBookmarkUrl(bookmark.url)
         );
@@ -481,14 +519,41 @@ function renderBookmarks() {
         deleteBtn.classList.add("delete-btn");
 
         actionCell.append(openBtn, copyBtn, pinBtn, editBtn, deleteBtn);
-        tr.append(titleCell, urlCell, groupCell, noteCell, actionCell);
-        bookmarkList.appendChild(tr);
+        header.appendChild(actionCell);
+
+        const content = document.createElement("div");
+        content.className = "entity-card-content";
+        content.appendChild(createDetailField(t("bm-th-url"), bookmark.url, normalizeUrl(bookmark.url)));
+
+        const metaRow = document.createElement("div");
+        metaRow.className = "bookmark-meta-row";
+
+        const groupLabel = document.createElement("span");
+        groupLabel.className = "bookmark-group-label";
+        groupLabel.textContent = bookmark.group_name || t("bm-no-group");
+
+        const savedAt = document.createElement("span");
+        savedAt.className = "bookmark-saved-at";
+        savedAt.textContent = `${formatAbsoluteDate(bookmark.created_at)} · ${formatRelativeTime(bookmark.created_at)}`;
+
+        metaRow.append(groupLabel, savedAt);
+        content.appendChild(metaRow);
+
+        content.appendChild(
+            createTextBlock(t("bm-th-note"), bookmark.note || t("common-no-note"), {
+                compact: true,
+                empty: !bookmark.note,
+            })
+        );
+
+        card.append(header, content);
+        bookmarkList.appendChild(card);
     });
 }
 
 function createBookmarkCard(bookmark) {
     const wrapper = document.createElement("div");
-    wrapper.className = "bookmark-card";
+    wrapper.className = "bookmark-card bookmark-card-head";
 
     const favicon = document.createElement("img");
     favicon.className = "bookmark-card-favicon";
@@ -509,10 +574,7 @@ function createBookmarkCard(bookmark) {
     description.className = "bookmark-card-description";
     description.textContent = bookmark.site_description || t("bm-no-description");
 
-    const meta = document.createElement("div");
-    meta.className = "bookmark-card-meta";
-    meta.textContent = `${formatAbsoluteDate(bookmark.created_at)} · ${formatRelativeTime(bookmark.created_at)}`;
-    body.append(title, description, meta);
+    body.append(title, description);
     wrapper.append(favicon, body);
     return wrapper;
 }

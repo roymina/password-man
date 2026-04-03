@@ -66,39 +66,16 @@
 
   <div id="bookmark-group-bar" class="bookmark-group-bar hidden"></div>
 
-  <div class="table-container" id="password-section">
-    <table>
-      <thead>
-        <tr>
-          <th data-i18n="th-name">密码名称</th>
-          <th data-i18n="th-username">用户名</th>
-          <th data-i18n="th-url">网址</th>
-          <th data-i18n="th-password">密码</th>
-          <th data-i18n="th-note">备注</th>
-          <th data-i18n="th-action">操作</th>
-        </tr>
-      </thead>
-      <tbody id="password-list"></tbody>
-    </table>
+  <div class="content-section" id="password-section">
+    <div id="password-list" class="entity-grid password-grid"></div>
   </div>
 
-  <div class="table-container hidden" id="bookmark-section">
-    <table>
-      <thead>
-        <tr>
-          <th data-i18n="bm-th-title">网站信息</th>
-          <th data-i18n="bm-th-url">网址</th>
-          <th data-i18n="bm-th-group">分组</th>
-          <th data-i18n="bm-th-note">备注</th>
-          <th data-i18n="bm-th-action">操作</th>
-        </tr>
-      </thead>
-      <tbody id="bookmark-list"></tbody>
-    </table>
+  <div class="content-section hidden" id="bookmark-section">
+    <div id="bookmark-list" class="entity-grid bookmark-grid"></div>
   </div>
 
   <div class="note-section hidden" id="note-section">
-    <div id="note-list" class="note-grid"></div>
+    <div id="note-list" class="entity-grid note-grid"></div>
   </div>
 
   <div id="modal" class="modal hidden">
