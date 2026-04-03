@@ -32,10 +32,11 @@
   <div class="tab-nav">
     <button class="tab-btn active" id="tab-passwords" data-i18n="tab-passwords">密码管理</button>
     <button class="tab-btn" id="tab-bookmarks" data-i18n="tab-bookmarks">网址收藏</button>
+    <button class="tab-btn" id="tab-notes" data-i18n="tab-notes">随手记</button>
   </div>
 
   <div class="controls" id="password-controls">
-    <input type="text" id="search-input" placeholder="输入密码名称关键字查询" data-i18n="search-placeholder" />
+    <input type="text" id="search-input" placeholder="输入密码名称关键词查询" data-i18n="search-placeholder" />
     <button id="add-btn" title="添加密码" data-i18n="add-btn">+</button>
   </div>
 
@@ -51,6 +52,16 @@
     <button id="bookmark-import-btn" data-i18n="bookmark-import-btn">导入 JSON</button>
     <button id="bookmark-export-btn" data-i18n="bookmark-export-btn">导出 JSON</button>
     <input type="file" id="bookmark-import-file" accept=".json,application/json" class="hidden" />
+  </div>
+
+  <div class="controls hidden" id="note-controls">
+    <input
+      type="text"
+      id="note-search-input"
+      placeholder="搜索随手记"
+      data-i18n="note-search-placeholder"
+    />
+    <button id="note-add-btn" data-i18n="note-add-btn">+ 添加</button>
   </div>
 
   <div id="bookmark-group-bar" class="bookmark-group-bar hidden"></div>
@@ -77,13 +88,17 @@
         <tr>
           <th data-i18n="bm-th-title">网站信息</th>
           <th data-i18n="bm-th-url">网址</th>
-          <th data-i18n="bm-th-group">组</th>
+          <th data-i18n="bm-th-group">分组</th>
           <th data-i18n="bm-th-note">备注</th>
           <th data-i18n="bm-th-action">操作</th>
         </tr>
       </thead>
       <tbody id="bookmark-list"></tbody>
     </table>
+  </div>
+
+  <div class="note-section hidden" id="note-section">
+    <div id="note-list" class="note-grid"></div>
   </div>
 
   <div id="modal" class="modal hidden">
@@ -103,7 +118,7 @@
       <label data-i18n="label-password">密码</label>
       <div class="password-input-group">
         <input type="text" id="modal-password" required />
-        <button id="modal-gen-pwd" type="button" title="Generate">生成</button>
+        <button id="modal-gen-pwd" type="button">生成</button>
       </div>
 
       <label data-i18n="label-note">备注</label>
@@ -127,7 +142,7 @@
       <label data-i18n="bm-label-url">网址</label>
       <input type="text" id="bm-modal-url" required />
 
-      <label data-i18n="bm-label-group">组</label>
+      <label data-i18n="bm-label-group">分组</label>
       <select id="bm-modal-group"></select>
 
       <label data-i18n="bm-label-note">备注</label>
@@ -136,6 +151,34 @@
       <div class="modal-actions">
         <button id="bm-modal-cancel" data-i18n="btn-cancel">取消</button>
         <button id="bm-modal-save" class="primary" data-i18n="btn-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="note-modal" class="modal hidden">
+    <div class="modal-content modal-content-lg">
+      <h3 id="note-modal-title" data-i18n="note-modal-add-title">添加随手记</h3>
+      <input type="hidden" id="note-modal-id" />
+
+      <label data-i18n="note-label-title">标题</label>
+      <input type="text" id="note-modal-title-input" required />
+
+      <div class="note-toolbar">
+        <div class="note-mode-tabs">
+          <button id="note-edit-mode" class="note-mode-btn active" type="button" data-i18n="note-edit-tab">编辑</button>
+          <button id="note-preview-mode" class="note-mode-btn" type="button" data-i18n="note-preview-tab">预览</button>
+        </div>
+        <button id="note-insert-image-btn" type="button" data-i18n="note-insert-image">插入图片</button>
+        <input type="file" id="note-image-input" accept="image/png,image/jpeg,image/gif,image/webp" class="hidden" />
+      </div>
+
+      <label data-i18n="note-label-content">Markdown</label>
+      <textarea id="note-modal-content" class="note-editor" spellcheck="false"></textarea>
+      <div id="note-preview" class="note-preview hidden" data-empty-text="预览内容显示在这里"></div>
+
+      <div class="modal-actions">
+        <button id="note-modal-cancel" data-i18n="btn-cancel">取消</button>
+        <button id="note-modal-save" class="primary" data-i18n="btn-save">保存</button>
       </div>
     </div>
   </div>

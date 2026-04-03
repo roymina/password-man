@@ -1,14 +1,20 @@
-const { invoke } = window.__TAURI__.core;
+const { invoke, convertFileSrc } = window.__TAURI__.core;
 import { getLanguage, initI18n, setLanguage, t } from "./i18n.js";
+import { extractFirstImagePath, renderMarkdown, stripMarkdown } from "./markdown.js";
 
 let autostartApi = null;
 
 let currentPasswords = [];
 let currentBookmarks = [];
 let currentBookmarkGroups = [];
+let currentNotes = [];
+let currentNoteAssetsDir = "";
 let activeGroupId = null;
 let currentTab = "passwords";
 let isDbProtected = false;
+let noteEditorMode = "edit";
+let noteSelectionStart = 0;
+let noteSelectionEnd = 0;
 
 const passwordList = document.getElementById("password-list");
 const searchInput = document.getElementById("search-input");
@@ -41,6 +47,19 @@ const bmNoteInput = document.getElementById("bm-modal-note");
 
 const groupModal = document.getElementById("bookmark-group-modal");
 const groupNameInput = document.getElementById("bookmark-group-name");
+
+const noteSearchInput = document.getElementById("note-search-input");
+const noteList = document.getElementById("note-list");
+const noteModal = document.getElementById("note-modal");
+const noteModalTitle = document.getElementById("note-modal-title");
+const noteModalId = document.getElementById("note-modal-id");
+const noteTitleInput = document.getElementById("note-modal-title-input");
+const noteContentInput = document.getElementById("note-modal-content");
+const notePreview = document.getElementById("note-preview");
+const noteEditModeBtn = document.getElementById("note-edit-mode");
+const notePreviewModeBtn = document.getElementById("note-preview-mode");
+const noteInsertImageBtn = document.getElementById("note-insert-image-btn");
+const noteImageInput = document.getElementById("note-image-input");
 
 async function getAutostartApi() {
     if (autostartApi) return autostartApi;
@@ -110,19 +129,25 @@ function initTheme() {
     });
 }
 
-function switchTab(tab) {
+async function switchTab(tab) {
     currentTab = tab;
     document.getElementById("tab-passwords").classList.toggle("active", tab === "passwords");
     document.getElementById("tab-bookmarks").classList.toggle("active", tab === "bookmarks");
+    document.getElementById("tab-notes").classList.toggle("active", tab === "notes");
 
     document.getElementById("password-controls").classList.toggle("hidden", tab !== "passwords");
     document.getElementById("bookmark-controls").classList.toggle("hidden", tab !== "bookmarks");
+    document.getElementById("note-controls").classList.toggle("hidden", tab !== "notes");
     document.getElementById("password-section").classList.toggle("hidden", tab !== "passwords");
     document.getElementById("bookmark-section").classList.toggle("hidden", tab !== "bookmarks");
+    document.getElementById("note-section").classList.toggle("hidden", tab !== "notes");
     bookmarkGroupBar.classList.toggle("hidden", tab !== "bookmarks");
 
     if (tab === "bookmarks") {
-        refreshBookmarksView();
+        await refreshBookmarksView();
+    }
+    if (tab === "notes") {
+        await refreshNotesView();
     }
 }
 
@@ -231,7 +256,7 @@ function renderPasswords() {
         const pinBtn = createIconButton(
             "assets/solar--arrow-to-top-left-bold.svg",
             passwordItem.pinned ? t("tooltip-unpin") : t("tooltip-pin"),
-            () => togglePin(passwordItem.id, !passwordItem.pinned)
+            () => togglePinPassword(passwordItem.id, !passwordItem.pinned)
         );
         if (passwordItem.pinned) pinBtn.style.backgroundColor = "var(--border-color)";
 
@@ -311,7 +336,7 @@ function generatePassword() {
     mPassword.value = password;
 }
 
-async function togglePin(id, pinned) {
+async function togglePinPassword(id, pinned) {
     try {
         await invoke("toggle_pin_password", { id, pinned });
         await loadPasswords();
@@ -631,6 +656,269 @@ async function handleExport() {
     }
 }
 
+async function refreshNotesView() {
+    try {
+        await ensureNoteAssetsDir();
+    } catch (error) {
+        console.error("Failed to init note asset dir:", error);
+    }
+    await loadNotes();
+}
+
+async function ensureNoteAssetsDir() {
+    if (currentNoteAssetsDir) return currentNoteAssetsDir;
+    currentNoteAssetsDir = await invoke("get_note_assets_dir");
+    return currentNoteAssetsDir;
+}
+
+async function loadNotes() {
+    try {
+        const search = noteSearchInput.value.trim() || null;
+        currentNotes = await invoke("get_notes", { search });
+        renderNotes();
+    } catch (error) {
+        handleDataAccessError(error);
+    }
+}
+
+function renderNotes() {
+    noteList.innerHTML = "";
+
+    currentNotes.forEach((note) => {
+        const card = document.createElement("article");
+        card.className = `note-card${note.pinned ? " pinned-row" : ""}`;
+        card.addEventListener("dblclick", () => openNoteModal(note));
+
+        const coverPath = extractFirstImagePath(note.content_md);
+        const cover = document.createElement("div");
+        cover.className = `note-card-cover${coverPath ? "" : " empty"}`;
+
+        if (coverPath) {
+            const image = document.createElement("img");
+            image.src = resolveNoteCardImageSrc(coverPath);
+            image.alt = note.title;
+            image.loading = "lazy";
+            image.addEventListener("error", () => {
+                cover.classList.add("empty");
+                image.remove();
+            });
+            cover.appendChild(image);
+        }
+
+        const body = document.createElement("div");
+        body.className = "note-card-body";
+
+        const header = document.createElement("div");
+        header.className = "note-card-header";
+
+        const title = document.createElement("h3");
+        title.className = "note-card-title";
+        title.textContent = note.pinned ? `★ ${note.title}` : note.title;
+        title.title = note.title;
+
+        const pinBtn = createIconButton(
+            "assets/solar--arrow-to-top-left-bold.svg",
+            note.pinned ? t("tooltip-unpin") : t("tooltip-pin"),
+            () => togglePinNote(note.id, !note.pinned)
+        );
+        if (note.pinned) pinBtn.style.backgroundColor = "var(--border-color)";
+        const editBtn = createIconButton("assets/solar--pen-linear.svg", t("note-modal-edit-title"), () =>
+            openNoteModal(note)
+        );
+        const deleteBtn = createIconButton("assets/solar--remove-square-broken.svg", t("th-action"), () =>
+            deleteNote(note.id)
+        );
+        deleteBtn.classList.add("delete-btn");
+        const actions = document.createElement("div");
+        actions.className = "note-card-actions";
+        actions.append(pinBtn, editBtn, deleteBtn);
+
+        header.append(title, actions);
+
+        const excerpt = buildNoteExcerpt(note.content_md);
+        const excerptBlock = document.createElement("p");
+        excerptBlock.className = "note-card-excerpt";
+        excerptBlock.textContent = excerpt || t("note-empty-content");
+        excerptBlock.title = excerpt;
+
+        const updated = document.createElement("div");
+        updated.className = "note-card-updated";
+        updated.textContent = `${formatAbsoluteDate(note.updated_at)} · ${formatRelativeTime(note.updated_at)}`;
+        updated.title = updated.textContent;
+
+        body.append(header, excerptBlock, updated);
+        card.append(cover, body);
+        noteList.appendChild(card);
+    });
+}
+
+function buildNoteExcerpt(markdown) {
+    return stripMarkdown(markdown).slice(0, 140);
+}
+
+function resolveNoteCardImageSrc(path) {
+    if (/^(https?:|data:)/i.test(path)) {
+        return path;
+    }
+    return resolveNoteImageSrc(path);
+}
+
+function openNoteModal(note = null) {
+    if (note) {
+        noteModalTitle.textContent = t("note-modal-edit-title");
+        noteModalId.value = note.id;
+        noteTitleInput.value = note.title;
+        noteContentInput.value = note.content_md || "";
+    } else {
+        noteModalTitle.textContent = t("note-modal-add-title");
+        noteModalId.value = "";
+        noteTitleInput.value = "";
+        noteContentInput.value = "";
+    }
+
+    noteSelectionStart = noteContentInput.value.length;
+    noteSelectionEnd = noteContentInput.value.length;
+    switchNoteEditorMode("edit");
+    renderNotePreview();
+    noteModal.classList.remove("hidden");
+    noteTitleInput.focus();
+}
+
+function closeNoteModal() {
+    noteModal.classList.add("hidden");
+}
+
+function switchNoteEditorMode(mode) {
+    noteEditorMode = mode;
+    noteEditModeBtn.classList.toggle("active", mode === "edit");
+    notePreviewModeBtn.classList.toggle("active", mode === "preview");
+    noteContentInput.classList.toggle("hidden", mode !== "edit");
+    notePreview.classList.toggle("hidden", mode !== "preview");
+    if (mode === "preview") {
+        renderNotePreview();
+    }
+}
+
+function renderNotePreview() {
+    const content = noteContentInput.value;
+    if (!content.trim()) {
+        notePreview.innerHTML = `<p class="note-preview-placeholder">${t("note-empty-preview")}</p>`;
+        return;
+    }
+    notePreview.innerHTML = renderMarkdown(content, {
+        resolveImageSrc: resolveNoteImageSrc,
+    });
+}
+
+function resolveNoteImageSrc(path) {
+    if (!/^note-assets[\\/]/i.test(path)) {
+        return path;
+    }
+    if (!currentNoteAssetsDir) {
+        return path;
+    }
+    const normalizedDir = String(currentNoteAssetsDir || "").replace(/\\/g, "/").replace(/\/$/, "");
+    const fileName = path.replace(/^note-assets[\\/]/i, "");
+    const fullPath = `${normalizedDir}/${fileName}`;
+    if (typeof convertFileSrc === "function") {
+        return convertFileSrc(fullPath);
+    }
+    return toFileUrl(fullPath);
+}
+
+function toFileUrl(path) {
+    const normalized = String(path).replace(/\\/g, "/");
+    if (/^[a-zA-Z]:\//.test(normalized)) {
+        return `file:///${encodeURI(normalized).replace(/#/g, "%23")}`;
+    }
+    return `file://${encodeURI(normalized).replace(/#/g, "%23")}`;
+}
+
+async function saveNote() {
+    const payload = {
+        title: noteTitleInput.value.trim(),
+        contentMd: noteContentInput.value,
+    };
+
+    if (!payload.title) {
+        alert(t("note-title-required"));
+        return;
+    }
+
+    try {
+        if (noteModalId.value) {
+            await invoke("update_note", { id: Number(noteModalId.value), ...payload });
+        } else {
+            await invoke("add_note", payload);
+        }
+        closeNoteModal();
+        await loadNotes();
+        showToast(t("toast-saved"));
+    } catch (error) {
+        alert(formatBackendError(error));
+    }
+}
+
+async function togglePinNote(id, pinned) {
+    try {
+        await invoke("toggle_pin_note", { id, pinned });
+        await loadNotes();
+    } catch (error) {
+        alert(formatBackendError(error));
+    }
+}
+
+function deleteNote(id) {
+    showConfirm(t("note-confirm-del"), async () => {
+        try {
+            await invoke("delete_note", { id });
+            await loadNotes();
+            showToast(t("toast-deleted"));
+        } catch (error) {
+            alert(formatBackendError(error));
+        }
+    });
+}
+
+function rememberNoteSelection() {
+    noteSelectionStart = noteContentInput.selectionStart ?? noteSelectionStart;
+    noteSelectionEnd = noteContentInput.selectionEnd ?? noteSelectionEnd;
+}
+
+function insertNoteText(text) {
+    const start = noteSelectionStart ?? noteContentInput.selectionStart ?? 0;
+    const end = noteSelectionEnd ?? noteContentInput.selectionEnd ?? 0;
+    const currentValue = noteContentInput.value;
+    noteContentInput.value = `${currentValue.slice(0, start)}${text}${currentValue.slice(end)}`;
+    const cursor = start + text.length;
+    noteContentInput.focus();
+    noteContentInput.setSelectionRange(cursor, cursor);
+    noteSelectionStart = cursor;
+    noteSelectionEnd = cursor;
+    renderNotePreview();
+}
+
+function fileAltText(fileName) {
+    return fileName.replace(/\.[^.]+$/, "").trim() || "image";
+}
+
+async function handleNoteImageFile(file) {
+    if (!file) return;
+    try {
+        await ensureNoteAssetsDir();
+        const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+        const savedPath = await invoke("save_note_image", {
+            fileName: file.name,
+            bytes,
+        });
+        const prefix = noteContentInput.value && !noteContentInput.value.endsWith("\n") ? "\n" : "";
+        insertNoteText(`${prefix}![${fileAltText(file.name)}](${savedPath})\n`);
+        showToast(t("toast-saved"));
+    } catch (error) {
+        alert(formatBackendError(error));
+    }
+}
+
 function normalizeUrl(url) {
     if (!url) return "";
     return /^https?:\/\//i.test(url) ? url : `https://${url}`;
@@ -724,6 +1012,9 @@ async function unlockDb() {
         await loadPasswords();
         if (currentTab === "bookmarks") {
             await refreshBookmarksView();
+        }
+        if (currentTab === "notes") {
+            await refreshNotesView();
         }
     } catch (error) {
         alert(formatBackendError(error));
@@ -820,9 +1111,14 @@ function initSettings() {
         renderBookmarkGroupBar();
         populateBookmarkGroupSelect(bmGroupSelect.value ? Number(bmGroupSelect.value) : activeGroupId);
         renderBookmarks();
+        renderNotes();
+        renderNotePreview();
         await loadPasswords();
         if (currentTab === "bookmarks") {
             await refreshBookmarksView();
+        }
+        if (currentTab === "notes") {
+            await refreshNotesView();
         }
     });
 }
@@ -859,6 +1155,10 @@ function formatBackendError(error) {
     if (text.includes("BOOKMARK_TITLE_REQUIRED") || text.includes("BOOKMARK_URL_REQUIRED")) {
         return t("bm-alert-title-url-req");
     }
+    if (text.includes("NOTE_TITLE_REQUIRED")) return t("note-title-required");
+    if (text.includes("NOTE_IMAGE_INVALID_TYPE")) return t("note-image-invalid");
+    if (text.includes("NOTE_IMAGE_EMPTY")) return t("note-image-invalid");
+    if (text.includes("NOTE_IMAGE")) return t("note-image-failed") + text;
     return t("alert-op-fail") + text;
 }
 
@@ -867,6 +1167,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     initTheme();
     initSettings();
     initAutostart();
+    try {
+        await ensureNoteAssetsDir();
+    } catch (error) {
+        console.error("Failed to init note asset dir:", error);
+    }
     await loadPasswords();
 
     searchInput.addEventListener("input", loadPasswords);
@@ -877,6 +1182,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("tab-passwords").addEventListener("click", () => switchTab("passwords"));
     document.getElementById("tab-bookmarks").addEventListener("click", () => switchTab("bookmarks"));
+    document.getElementById("tab-notes").addEventListener("click", () => switchTab("notes"));
 
     bookmarkSearchInput.addEventListener("input", loadBookmarks);
     document.getElementById("bookmark-add-btn").addEventListener("click", () => openBookmarkModal());
@@ -892,6 +1198,32 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
     bookmarkImportFile.addEventListener("change", (event) => handleImportFile(event.target.files[0]));
     document.getElementById("bookmark-export-btn").addEventListener("click", handleExport);
+
+    noteSearchInput.addEventListener("input", loadNotes);
+    document.getElementById("note-add-btn").addEventListener("click", () => openNoteModal());
+    document.getElementById("note-modal-cancel").addEventListener("click", closeNoteModal);
+    document.getElementById("note-modal-save").addEventListener("click", saveNote);
+    noteEditModeBtn.addEventListener("click", () => switchNoteEditorMode("edit"));
+    notePreviewModeBtn.addEventListener("click", () => switchNoteEditorMode("preview"));
+    noteInsertImageBtn.addEventListener("click", () => {
+        rememberNoteSelection();
+        noteImageInput.value = "";
+        noteImageInput.click();
+    });
+    noteImageInput.addEventListener("change", (event) => handleNoteImageFile(event.target.files[0]));
+    noteContentInput.addEventListener("click", rememberNoteSelection);
+    noteContentInput.addEventListener("keyup", rememberNoteSelection);
+    noteContentInput.addEventListener("select", rememberNoteSelection);
+    noteContentInput.addEventListener("input", () => {
+        rememberNoteSelection();
+        renderNotePreview();
+    });
+    notePreview.addEventListener("click", (event) => {
+        const link = event.target.closest("a");
+        if (!link) return;
+        event.preventDefault();
+        openBookmarkUrl(link.getAttribute("href"));
+    });
 
     document.getElementById("settings-btn").addEventListener("click", openSettingsModal);
     document.getElementById("settings-close").addEventListener("click", () => {

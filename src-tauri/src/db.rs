@@ -3,14 +3,17 @@ use reqwest::header::CONTENT_TYPE;
 use reqwest::Url;
 use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
+use std::fs;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::State;
 
 const BOOKMARK_EXPORT_SCHEMA: &str = "passwordman.bookmarks";
 const BOOKMARK_EXPORT_VERSION: u32 = 2;
+const NOTE_ASSET_DIR: &str = "note-assets";
 const BOOKMARK_SELECT: &str = "
     SELECT
         b.id,
@@ -59,6 +62,16 @@ pub struct Bookmark {
     pub favicon_url: Option<String>,
     pub group_id: Option<i32>,
     pub group_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Note {
+    pub id: i32,
+    pub title: String,
+    pub content_md: String,
+    pub pinned: bool,
+    pub created_at: i64,
+    pub updated_at: i64,
 }
 
 #[derive(Debug, Default)]
@@ -134,7 +147,9 @@ pub struct DbState {
 impl DbState {
     pub fn new() -> Self {
         let exe_path = std::env::current_exe().expect("Failed to get executable path");
-        let exe_dir = exe_path.parent().expect("Failed to get executable directory");
+        let exe_dir = exe_path
+            .parent()
+            .expect("Failed to get executable directory");
         let db_path = exe_dir.join("pwd.db");
 
         Self {
@@ -165,6 +180,14 @@ impl DbState {
             }
         }
     }
+
+    pub fn note_assets_dir(&self) -> PathBuf {
+        let exe_path = std::env::current_exe().expect("Failed to get executable path");
+        let exe_dir = exe_path
+            .parent()
+            .expect("Failed to get executable directory");
+        exe_dir.join(NOTE_ASSET_DIR)
+    }
 }
 
 pub fn run_migrations(conn: &Connection) -> Result<()> {
@@ -178,7 +201,10 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         )",
         [],
     )?;
-    let _ = conn.execute("ALTER TABLE passwords ADD COLUMN pinned BOOLEAN DEFAULT 0", []);
+    let _ = conn.execute(
+        "ALTER TABLE passwords ADD COLUMN pinned BOOLEAN DEFAULT 0",
+        [],
+    );
     let _ = conn.execute("ALTER TABLE passwords ADD COLUMN url TEXT", []);
 
     conn.execute(
@@ -209,6 +235,22 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     let _ = conn.execute("ALTER TABLE bookmarks ADD COLUMN favicon_url TEXT", []);
     let _ = conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_bookmarks_group_id ON bookmarks(group_id)",
+        [],
+    );
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS notes (
+            id INTEGER PRIMARY KEY,
+            title TEXT NOT NULL,
+            content_md TEXT NOT NULL,
+            pinned BOOLEAN DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at DESC)",
         [],
     );
 
@@ -267,7 +309,10 @@ fn migrate_legacy_bookmark_categories(conn: &Connection) -> Result<()> {
 }
 
 #[tauri::command]
-pub fn get_passwords(state: State<AppState>, search: Option<String>) -> Result<Vec<Password>, String> {
+pub fn get_passwords(
+    state: State<AppState>,
+    search: Option<String>,
+) -> Result<Vec<Password>, String> {
     let key_guard = state.db_key.lock().unwrap();
     let key = key_guard.as_deref();
 
@@ -475,7 +520,10 @@ pub fn get_bookmarks(
         return Err("LOCKED".to_string());
     }
 
-    match (search.and_then(|value| clean_optional_text(Some(value))), group_id) {
+    match (
+        search.and_then(|value| clean_optional_text(Some(value))),
+        group_id,
+    ) {
         (Some(search), Some(group_id)) => {
             let pattern = format!("%{}%", search);
             let sql = format!(
@@ -495,7 +543,10 @@ pub fn get_bookmarks(
             collect_bookmarks(stmt.query_map(params![pattern], map_bookmark_row))
         }
         (None, Some(group_id)) => {
-            let sql = format!("{} WHERE b.group_id = ?1{}", BOOKMARK_SELECT, BOOKMARK_ORDER);
+            let sql = format!(
+                "{} WHERE b.group_id = ?1{}",
+                BOOKMARK_SELECT, BOOKMARK_ORDER
+            );
             let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
             collect_bookmarks(stmt.query_map(params![group_id], map_bookmark_row))
         }
@@ -508,7 +559,9 @@ pub fn get_bookmarks(
 }
 
 fn collect_bookmarks(
-    rows: rusqlite::Result<rusqlite::MappedRows<'_, fn(&rusqlite::Row<'_>) -> rusqlite::Result<Bookmark>>>,
+    rows: rusqlite::Result<
+        rusqlite::MappedRows<'_, fn(&rusqlite::Row<'_>) -> rusqlite::Result<Bookmark>>,
+    >,
 ) -> Result<Vec<Bookmark>, String> {
     let mut bookmarks = Vec::new();
     for row in rows.map_err(|e| e.to_string())? {
@@ -539,7 +592,10 @@ pub fn get_bookmark_groups(state: State<AppState>) -> Result<Vec<BookmarkGroup>,
     let key = key_guard.as_deref();
     let db = DbState::new();
     let conn = db.get_connection(key).map_err(|e| e.to_string())?;
-    if conn.prepare("SELECT count(*) FROM bookmark_groups").is_err() {
+    if conn
+        .prepare("SELECT count(*) FROM bookmark_groups")
+        .is_err()
+    {
         return Err("LOCKED".to_string());
     }
     let mut stmt = conn
@@ -560,6 +616,161 @@ pub fn get_bookmark_groups(state: State<AppState>) -> Result<Vec<BookmarkGroup>,
         groups.push(row.map_err(|e| e.to_string())?);
     }
     Ok(groups)
+}
+
+#[tauri::command]
+pub fn get_notes(state: State<AppState>, search: Option<String>) -> Result<Vec<Note>, String> {
+    let key_guard = state.db_key.lock().unwrap();
+    let key = key_guard.as_deref();
+    let db = DbState::new();
+    let conn = db.get_connection(key).map_err(|e| e.to_string())?;
+
+    if conn.prepare("SELECT count(*) FROM notes").is_err() {
+        return Err("LOCKED".to_string());
+    }
+
+    let base_sql = "SELECT id, title, content_md, pinned, created_at, updated_at FROM notes";
+    let order_sql = " ORDER BY pinned DESC, updated_at DESC, id DESC";
+    let mut notes = Vec::new();
+
+    if let Some(search) = clean_optional_text(search) {
+        let pattern = format!("%{}%", search);
+        let sql = format!(
+            "{} WHERE title LIKE ?1 OR content_md LIKE ?1{}",
+            base_sql, order_sql
+        );
+        let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(params![pattern], map_note_row)
+            .map_err(|e| e.to_string())?;
+        for row in rows {
+            notes.push(row.map_err(|e| e.to_string())?);
+        }
+    } else {
+        let sql = format!("{}{}", base_sql, order_sql);
+        let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], map_note_row)
+            .map_err(|e| e.to_string())?;
+        for row in rows {
+            notes.push(row.map_err(|e| e.to_string())?);
+        }
+    }
+
+    Ok(notes)
+}
+
+#[tauri::command]
+pub fn add_note(state: State<AppState>, title: String, content_md: String) -> Result<(), String> {
+    let title = clean_optional_text(Some(title)).ok_or("NOTE_TITLE_REQUIRED")?;
+    let timestamp = current_timestamp();
+
+    let key_guard = state.db_key.lock().unwrap();
+    let key = key_guard.as_deref();
+    let db = DbState::new();
+    let conn = db.get_connection(key).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO notes (title, content_md, pinned, created_at, updated_at) VALUES (?1, ?2, 0, ?3, ?4)",
+        params![title, content_md, timestamp, timestamp],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_note(
+    state: State<AppState>,
+    id: i32,
+    title: String,
+    content_md: String,
+) -> Result<(), String> {
+    let title = clean_optional_text(Some(title)).ok_or("NOTE_TITLE_REQUIRED")?;
+
+    let key_guard = state.db_key.lock().unwrap();
+    let key = key_guard.as_deref();
+    let db = DbState::new();
+    let conn = db.get_connection(key).map_err(|e| e.to_string())?;
+
+    let old_content = conn
+        .query_row(
+            "SELECT content_md FROM notes WHERE id = ?1",
+            params![id],
+            |row| row.get::<_, String>(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE notes SET title = ?1, content_md = ?2, updated_at = ?3 WHERE id = ?4",
+        params![title, content_md, current_timestamp(), id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    cleanup_removed_note_assets(&conn, &db, Some(id), &old_content, Some(&content_md))
+}
+
+#[tauri::command]
+pub fn delete_note(state: State<AppState>, id: i32) -> Result<(), String> {
+    let key_guard = state.db_key.lock().unwrap();
+    let key = key_guard.as_deref();
+    let db = DbState::new();
+    let conn = db.get_connection(key).map_err(|e| e.to_string())?;
+
+    let old_content = conn
+        .query_row(
+            "SELECT content_md FROM notes WHERE id = ?1",
+            params![id],
+            |row| row.get::<_, String>(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    conn.execute("DELETE FROM notes WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    cleanup_removed_note_assets(&conn, &db, Some(id), &old_content, None)
+}
+
+#[tauri::command]
+pub fn toggle_pin_note(state: State<AppState>, id: i32, pinned: bool) -> Result<(), String> {
+    let key_guard = state.db_key.lock().unwrap();
+    let key = key_guard.as_deref();
+    let db = DbState::new();
+    let conn = db.get_connection(key).map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE notes SET pinned = ?1 WHERE id = ?2",
+        params![pinned, id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn save_note_image(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
+    if bytes.is_empty() {
+        return Err("NOTE_IMAGE_EMPTY".to_string());
+    }
+
+    let extension = normalize_image_extension(&file_name).ok_or("NOTE_IMAGE_INVALID_TYPE")?;
+    validate_image_bytes(&bytes, &extension)?;
+
+    let db = DbState::new();
+    let assets_dir = db.note_assets_dir();
+    fs::create_dir_all(&assets_dir).map_err(|e| e.to_string())?;
+
+    let base_name = file_stem_safe(&file_name);
+    let file_name = format!("{}_{}.{}", current_timestamp_millis(), base_name, extension);
+    let target_path = assets_dir.join(&file_name);
+    fs::write(&target_path, bytes).map_err(|e| e.to_string())?;
+
+    Ok(format!("{}/{}", NOTE_ASSET_DIR, file_name))
+}
+
+#[tauri::command]
+pub fn get_note_assets_dir() -> Result<String, String> {
+    let db = DbState::new();
+    let assets_dir = db.note_assets_dir();
+    fs::create_dir_all(&assets_dir).map_err(|e| e.to_string())?;
+    Ok(assets_dir.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -878,6 +1089,17 @@ fn resolve_group_id_by_name(conn: &Connection, group_name: Option<&str>) -> Resu
     }
 }
 
+fn map_note_row(row: &rusqlite::Row) -> rusqlite::Result<Note> {
+    Ok(Note {
+        id: row.get(0)?,
+        title: row.get(1)?,
+        content_md: row.get(2)?,
+        pinned: row.get(3).unwrap_or(false),
+        created_at: row.get(4).unwrap_or(0),
+        updated_at: row.get(5).unwrap_or(0),
+    })
+}
+
 fn clean_optional_text(value: Option<String>) -> Option<String> {
     value.and_then(|value| {
         let trimmed = value.trim();
@@ -889,10 +1111,150 @@ fn clean_optional_text(value: Option<String>) -> Option<String> {
     })
 }
 
+fn cleanup_removed_note_assets(
+    conn: &Connection,
+    db: &DbState,
+    excluded_note_id: Option<i32>,
+    old_content: &str,
+    new_content: Option<&str>,
+) -> Result<(), String> {
+    let old_refs = extract_note_asset_refs(old_content);
+    let new_refs = new_content.map(extract_note_asset_refs).unwrap_or_default();
+    let removed: HashSet<String> = old_refs.difference(&new_refs).cloned().collect();
+
+    for asset_ref in removed {
+        let referenced_count: i64 = if let Some(note_id) = excluded_note_id {
+            conn.query_row(
+                "SELECT COUNT(*) FROM notes WHERE id != ?1 AND instr(content_md, ?2) > 0",
+                params![note_id, asset_ref],
+                |row| row.get(0),
+            )
+            .map_err(|e| e.to_string())?
+        } else {
+            conn.query_row(
+                "SELECT COUNT(*) FROM notes WHERE instr(content_md, ?1) > 0",
+                params![asset_ref],
+                |row| row.get(0),
+            )
+            .map_err(|e| e.to_string())?
+        };
+
+        if referenced_count == 0 {
+            let asset_path = resolve_note_asset_path(&db.note_assets_dir(), &asset_ref)?;
+            match fs::remove_file(&asset_path) {
+                Ok(_) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.to_string()),
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn extract_note_asset_refs(markdown: &str) -> HashSet<String> {
+    let bytes = markdown.as_bytes();
+    let mut refs = HashSet::new();
+    let mut index = 0usize;
+
+    while index + 4 < bytes.len() {
+        if bytes[index] == b'!' && bytes[index + 1] == b'[' {
+            if let Some(close_bracket_offset) = markdown[index + 2..].find("](") {
+                let open_path_index = index + 2 + close_bracket_offset + 2;
+                if let Some(close_paren_offset) = markdown[open_path_index..].find(')') {
+                    let raw_path = markdown[open_path_index..open_path_index + close_paren_offset]
+                        .trim()
+                        .split_whitespace()
+                        .next()
+                        .unwrap_or_default()
+                        .trim_matches('<')
+                        .trim_matches('>');
+                    if is_managed_note_asset_ref(raw_path) {
+                        refs.insert(raw_path.replace('\\', "/"));
+                    }
+                    index = open_path_index + close_paren_offset + 1;
+                    continue;
+                }
+            }
+        }
+        index += 1;
+    }
+
+    refs
+}
+
+fn is_managed_note_asset_ref(value: &str) -> bool {
+    let normalized = value.replace('\\', "/");
+    normalized.starts_with(&format!("{}/", NOTE_ASSET_DIR)) && !normalized.contains("../")
+}
+
+fn resolve_note_asset_path(base_dir: &Path, asset_ref: &str) -> Result<PathBuf, String> {
+    if !is_managed_note_asset_ref(asset_ref) {
+        return Err("NOTE_IMAGE_INVALID_PATH".to_string());
+    }
+    let relative = asset_ref
+        .replace('\\', "/")
+        .trim_start_matches(&format!("{}/", NOTE_ASSET_DIR))
+        .to_string();
+    Ok(base_dir.join(relative))
+}
+
+fn normalize_image_extension(file_name: &str) -> Option<String> {
+    let extension = Path::new(file_name)
+        .extension()?
+        .to_string_lossy()
+        .to_ascii_lowercase();
+    match extension.as_str() {
+        "png" | "jpg" | "jpeg" | "gif" | "webp" => Some(extension),
+        _ => None,
+    }
+}
+
+fn file_stem_safe(file_name: &str) -> String {
+    let stem = Path::new(file_name)
+        .file_stem()
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_else(|| "image".to_string());
+    let cleaned = stem
+        .chars()
+        .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' })
+        .collect::<String>()
+        .trim_matches('_')
+        .to_string();
+    if cleaned.is_empty() {
+        "image".to_string()
+    } else {
+        cleaned
+    }
+}
+
+fn validate_image_bytes(bytes: &[u8], extension: &str) -> Result<(), String> {
+    let valid = match extension {
+        "png" => bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]),
+        "jpg" | "jpeg" => bytes.starts_with(&[0xFF, 0xD8, 0xFF]),
+        "gif" => bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a"),
+        "webp" => bytes.len() > 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP",
+        _ => false,
+    };
+
+    if valid {
+        Ok(())
+    } else {
+        Err("NOTE_IMAGE_INVALID_TYPE".to_string())
+    }
+}
+
 fn current_timestamp() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+fn current_timestamp_millis() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
         .unwrap_or(0)
 }
 
@@ -1065,7 +1427,12 @@ fn extract_attr_value(tag: &str, attr_name: &str) -> Option<String> {
         .find(|c: char| c.is_whitespace() || c == '>')
         .map(|offset| offset + start)
         .unwrap_or(tag.len());
-    Some(tag[start..end].trim_matches('"').trim_matches('\'').to_string())
+    Some(
+        tag[start..end]
+            .trim_matches('"')
+            .trim_matches('\'')
+            .to_string(),
+    )
 }
 
 fn clean_html_text(value: &str) -> Option<String> {
@@ -1081,5 +1448,39 @@ fn clean_html_text(value: &str) -> Option<String> {
         None
     } else {
         Some(compact)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{extract_note_asset_refs, file_stem_safe, validate_image_bytes};
+
+    #[test]
+    fn extract_note_asset_refs_only_returns_managed_paths() {
+        let markdown = r#"
+![first](note-assets/abc.png)
+![second](./elsewhere.png)
+![third](note-assets/demo.webp "title")
+![fourth](note-assets\windows.jpg)
+"#;
+
+        let refs = extract_note_asset_refs(markdown);
+        assert!(refs.contains("note-assets/abc.png"));
+        assert!(refs.contains("note-assets/demo.webp"));
+        assert!(refs.contains("note-assets/windows.jpg"));
+        assert_eq!(refs.len(), 3);
+    }
+
+    #[test]
+    fn file_stem_safe_normalizes_name() {
+        assert_eq!(file_stem_safe("my image.png"), "my_image");
+        assert_eq!(file_stem_safe("!@#.png"), "image");
+    }
+
+    #[test]
+    fn validate_image_bytes_checks_magic_number() {
+        assert!(validate_image_bytes(&[0xFF, 0xD8, 0xFF, 0x00], "jpg").is_ok());
+        assert!(validate_image_bytes(b"GIF89a1234", "gif").is_ok());
+        assert!(validate_image_bytes(b"not-image", "png").is_err());
     }
 }
