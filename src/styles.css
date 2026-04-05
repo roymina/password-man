@@ -589,10 +589,15 @@ body.dark-theme .action-btn img {
 .modal {
   position: fixed;
   inset: 0;
+  z-index: 1000;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .modal-content {
@@ -603,6 +608,31 @@ body.dark-theme .action-btn img {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-sizing: border-box;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.modal-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 999px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid var(--scrollbar-track);
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
 }
 
 .modal-content-sm {
@@ -646,6 +676,18 @@ body.dark-theme .action-btn img {
   background-color: var(--primary-color);
   color: #fff;
   border-color: var(--primary-color);
+}
+
+.note-image-source-local {
+  width: 100%;
+}
+
+.note-image-source-divider {
+  margin: 0;
+  color: var(--muted-color);
+  font-size: 13px;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .note-editor {

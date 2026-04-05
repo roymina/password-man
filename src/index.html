@@ -160,6 +160,41 @@
     </div>
   </div>
 
+  <div id="note-image-source-modal" class="modal hidden">
+    <div class="modal-content modal-content-sm">
+      <h3 data-i18n="note-image-source-title">插入图片</h3>
+      <button
+        id="note-image-local-btn"
+        type="button"
+        class="primary note-image-source-local"
+        data-i18n="note-image-source-local"
+      >
+        选择本地图片
+      </button>
+      <p class="note-image-source-divider">or</p>
+      <label for="note-image-url-input" data-i18n="note-image-source-url-label">Image URL</label>
+      <input
+        type="text"
+        id="note-image-url-input"
+        placeholder="https://example.com/image.png"
+        data-i18n="note-image-source-url-placeholder"
+      />
+      <label for="note-image-alt-input" data-i18n="note-image-source-alt-label">Alt Text</label>
+      <input
+        type="text"
+        id="note-image-alt-input"
+        placeholder="Optional description"
+        data-i18n="note-image-source-alt-placeholder"
+      />
+      <div class="modal-actions">
+        <button id="note-image-source-cancel" type="button" data-i18n="btn-cancel">取消</button>
+        <button id="note-image-source-insert" type="button" class="primary" data-i18n="note-image-source-insert">
+          插入网络图片
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="bookmark-group-modal" class="modal hidden">
     <div class="modal-content modal-content-sm">
       <h3 data-i18n="bm-group-modal-title">添加组</h3>

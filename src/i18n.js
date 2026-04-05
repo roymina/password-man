@@ -109,11 +109,20 @@ const translations = {
         "note-preview-tab": "Preview",
         "note-edit-tab": "Edit",
         "note-insert-image": "Insert Image",
+        "note-image-source-title": "Insert Image",
+        "note-image-source-local": "Choose Local Image",
+        "note-image-source-url-label": "Image URL",
+        "note-image-source-url-placeholder": "https://example.com/image.png",
+        "note-image-source-alt-label": "Alt Text",
+        "note-image-source-alt-placeholder": "Optional description for Markdown image",
+        "note-image-source-insert": "Insert Remote Image",
         "note-empty-preview": "Preview will appear here",
         "note-empty-content": "No content",
         "note-confirm-del": "Are you sure you want to delete this note? This cannot be undone.",
         "note-title-required": "Title is required",
         "note-image-invalid": "Only PNG, JPG, GIF, and WebP images are supported",
+        "note-image-url-required": "Image URL is required",
+        "note-image-url-invalid": "Only http and https image links are supported",
         "note-image-failed": "Image import failed: ",
         "note-updated-at": "Updated",
     },
@@ -236,6 +245,18 @@ const translations = {
         "note-updated-at": "更新于",
     },
 };
+
+Object.assign(translations.zh, {
+    "note-image-source-title": "\u63d2\u5165\u56fe\u7247",
+    "note-image-source-local": "\u9009\u62e9\u672c\u5730\u56fe\u7247",
+    "note-image-source-url-label": "\u56fe\u7247 URL",
+    "note-image-source-url-placeholder": "https://example.com/image.png",
+    "note-image-source-alt-label": "Alt \u6587\u672c",
+    "note-image-source-alt-placeholder": "\u53ef\u9009\uff0c\u7528\u4e8e Markdown \u56fe\u7247\u63cf\u8ff0",
+    "note-image-source-insert": "\u63d2\u5165\u7f51\u7edc\u56fe\u7247",
+    "note-image-url-required": "\u8bf7\u8f93\u5165\u56fe\u7247 URL",
+    "note-image-url-invalid": "\u53ea\u652f\u6301 http \u6216 https \u7684\u7f51\u7edc\u56fe\u7247\u94fe\u63a5",
+});
 
 let currentLang = "zh";
 

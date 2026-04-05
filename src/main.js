@@ -60,6 +60,12 @@ const noteEditModeBtn = document.getElementById("note-edit-mode");
 const notePreviewModeBtn = document.getElementById("note-preview-mode");
 const noteInsertImageBtn = document.getElementById("note-insert-image-btn");
 const noteImageInput = document.getElementById("note-image-input");
+const noteImageSourceModal = document.getElementById("note-image-source-modal");
+const noteImageLocalBtn = document.getElementById("note-image-local-btn");
+const noteImageUrlInput = document.getElementById("note-image-url-input");
+const noteImageAltInput = document.getElementById("note-image-alt-input");
+const noteImageSourceCancel = document.getElementById("note-image-source-cancel");
+const noteImageSourceInsert = document.getElementById("note-image-source-insert");
 
 async function getAutostartApi() {
     if (autostartApi) return autostartApi;
@@ -167,7 +173,7 @@ function createIconButton(src, title, onClick) {
     return button;
 }
 
-function createCopyableContent(textValue, copyValue) {
+function createCopyableContent(textValue, copyValue, openOptions = null) {
     const wrapper = document.createElement("div");
     wrapper.className = "copyable-cell";
 
@@ -180,6 +186,16 @@ function createCopyableContent(textValue, copyValue) {
         wrapper.appendChild(
             createIconButton("assets/solar--copy-line-duotone.svg", t("tooltip-copy"), () =>
                 copyToClipboard(copyValue)
+            )
+        );
+    }
+
+    if (openOptions?.onClick) {
+        wrapper.appendChild(
+            createIconButton(
+                "assets/solar--arrow-to-top-left-bold.svg",
+                openOptions.title || t("bm-open-tooltip"),
+                openOptions.onClick
             )
         );
     }
@@ -247,7 +263,19 @@ function renderPasswords() {
             createDetailField(t("th-username"), passwordItem.username || "-", passwordItem.username || null)
         );
         const normalizedUrl = passwordItem.url ? normalizeUrl(passwordItem.url) : null;
-        content.appendChild(createDetailField(t("th-url"), passwordItem.url || "-", normalizedUrl));
+        content.appendChild(
+            createDetailField(
+                t("th-url"),
+                passwordItem.url || "-",
+                normalizedUrl,
+                normalizedUrl
+                    ? {
+                          title: t("bm-open-tooltip"),
+                          onClick: () => openBookmarkUrl(passwordItem.url),
+                      }
+                    : null
+            )
+        );
 
         const passwordField = document.createElement("div");
         passwordField.className = "detail-field";
@@ -292,7 +320,7 @@ function renderPasswords() {
     });
 }
 
-function createDetailField(label, textValue, copyValue = null) {
+function createDetailField(label, textValue, copyValue = null, openOptions = null) {
     const field = document.createElement("div");
     field.className = "detail-field";
 
@@ -300,7 +328,7 @@ function createDetailField(label, textValue, copyValue = null) {
     labelNode.className = "detail-field-label";
     labelNode.textContent = label;
 
-    const value = createCopyableContent(textValue, copyValue);
+    const value = createCopyableContent(textValue, copyValue, openOptions);
     value.classList.add("detail-field-value");
 
     field.append(labelNode, value);
@@ -523,7 +551,12 @@ function renderBookmarks() {
 
         const content = document.createElement("div");
         content.className = "entity-card-content";
-        content.appendChild(createDetailField(t("bm-th-url"), bookmark.url, normalizeUrl(bookmark.url)));
+        content.appendChild(
+            createDetailField(t("bm-th-url"), bookmark.url, normalizeUrl(bookmark.url), {
+                title: t("bm-open-tooltip"),
+                onClick: () => openBookmarkUrl(bookmark.url),
+            })
+        );
 
         const metaRow = document.createElement("div");
         metaRow.className = "bookmark-meta-row";
@@ -784,6 +817,9 @@ function renderNotes() {
             () => togglePinNote(note.id, !note.pinned)
         );
         if (note.pinned) pinBtn.style.backgroundColor = "var(--border-color)";
+        const previewBtn = createIconButton("assets/solar--eye-outline.svg", t("note-preview-tab"), () =>
+            openNoteModal(note, "preview")
+        );
         const editBtn = createIconButton("assets/solar--pen-linear.svg", t("note-modal-edit-title"), () =>
             openNoteModal(note)
         );
@@ -793,7 +829,7 @@ function renderNotes() {
         deleteBtn.classList.add("delete-btn");
         const actions = document.createElement("div");
         actions.className = "note-card-actions";
-        actions.append(pinBtn, editBtn, deleteBtn);
+        actions.append(pinBtn, previewBtn, editBtn, deleteBtn);
 
         header.append(title, actions);
 
@@ -825,7 +861,7 @@ function resolveNoteCardImageSrc(path) {
     return resolveNoteImageSrc(path);
 }
 
-function openNoteModal(note = null) {
+function openNoteModal(note = null, initialMode = "edit") {
     if (note) {
         noteModalTitle.textContent = t("note-modal-edit-title");
         noteModalId.value = note.id;
@@ -840,13 +876,14 @@ function openNoteModal(note = null) {
 
     noteSelectionStart = noteContentInput.value.length;
     noteSelectionEnd = noteContentInput.value.length;
-    switchNoteEditorMode("edit");
     renderNotePreview();
+    switchNoteEditorMode(initialMode);
     noteModal.classList.remove("hidden");
     noteTitleInput.focus();
 }
 
 function closeNoteModal() {
+    closeNoteImageSourceModal();
     noteModal.classList.add("hidden");
 }
 
@@ -947,6 +984,30 @@ function rememberNoteSelection() {
     noteSelectionEnd = noteContentInput.selectionEnd ?? noteSelectionEnd;
 }
 
+function restoreNoteSelection() {
+    noteContentInput.focus();
+    if (noteSelectionStart != null && noteSelectionEnd != null) {
+        noteContentInput.setSelectionRange(noteSelectionStart, noteSelectionEnd);
+    }
+}
+
+function openNoteImageSourceModal() {
+    rememberNoteSelection();
+    if (noteEditorMode !== "edit") {
+        switchNoteEditorMode("edit");
+    }
+    noteImageUrlInput.value = "";
+    noteImageAltInput.value = "";
+    noteImageSourceModal.classList.remove("hidden");
+    noteImageUrlInput.focus();
+}
+
+function closeNoteImageSourceModal() {
+    noteImageSourceModal.classList.add("hidden");
+    noteImageUrlInput.value = "";
+    noteImageAltInput.value = "";
+}
+
 function insertNoteText(text) {
     const start = noteSelectionStart ?? noteContentInput.selectionStart ?? 0;
     const end = noteSelectionEnd ?? noteContentInput.selectionEnd ?? 0;
@@ -964,6 +1025,25 @@ function fileAltText(fileName) {
     return fileName.replace(/\.[^.]+$/, "").trim() || "image";
 }
 
+function normalizeRemoteImageUrl(url) {
+    const trimmed = String(url || "").trim();
+    if (!trimmed) return "";
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (/^\/\//.test(trimmed)) return `https:${trimmed}`;
+    if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed)) return "";
+    return `https://${trimmed}`;
+}
+
+function imageAltTextFromUrl(url) {
+    try {
+        const pathname = new URL(url).pathname;
+        const fileName = decodeURIComponent(pathname.split("/").pop() || "");
+        return fileAltText(fileName || "image");
+    } catch {
+        return "image";
+    }
+}
+
 async function handleNoteImageFile(file) {
     if (!file) return;
     try {
@@ -975,10 +1055,32 @@ async function handleNoteImageFile(file) {
         });
         const prefix = noteContentInput.value && !noteContentInput.value.endsWith("\n") ? "\n" : "";
         insertNoteText(`${prefix}![${fileAltText(file.name)}](${savedPath})\n`);
+        closeNoteImageSourceModal();
         showToast(t("toast-saved"));
     } catch (error) {
         alert(formatBackendError(error));
     }
+}
+
+function insertRemoteNoteImage() {
+    const rawUrl = noteImageUrlInput.value;
+    const normalizedUrl = normalizeRemoteImageUrl(rawUrl);
+
+    if (!String(rawUrl || "").trim()) {
+        alert(t("note-image-url-required"));
+        return;
+    }
+    if (!normalizedUrl) {
+        alert(t("note-image-url-invalid"));
+        return;
+    }
+
+    restoreNoteSelection();
+    const altText = noteImageAltInput.value.trim() || imageAltTextFromUrl(normalizedUrl);
+    const prefix = noteContentInput.value && !noteContentInput.value.endsWith("\n") ? "\n" : "";
+    insertNoteText(`${prefix}![${altText}](${normalizedUrl})\n`);
+    closeNoteImageSourceModal();
+    showToast(t("toast-saved"));
 }
 
 function normalizeUrl(url) {
@@ -1267,12 +1369,21 @@ window.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("note-modal-save").addEventListener("click", saveNote);
     noteEditModeBtn.addEventListener("click", () => switchNoteEditorMode("edit"));
     notePreviewModeBtn.addEventListener("click", () => switchNoteEditorMode("preview"));
-    noteInsertImageBtn.addEventListener("click", () => {
-        rememberNoteSelection();
+    noteInsertImageBtn.addEventListener("click", openNoteImageSourceModal);
+    noteImageLocalBtn.addEventListener("click", () => {
+        restoreNoteSelection();
         noteImageInput.value = "";
         noteImageInput.click();
     });
     noteImageInput.addEventListener("change", (event) => handleNoteImageFile(event.target.files[0]));
+    noteImageSourceCancel.addEventListener("click", closeNoteImageSourceModal);
+    noteImageSourceInsert.addEventListener("click", insertRemoteNoteImage);
+    noteImageUrlInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") insertRemoteNoteImage();
+    });
+    noteImageAltInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") insertRemoteNoteImage();
+    });
     noteContentInput.addEventListener("click", rememberNoteSelection);
     noteContentInput.addEventListener("keyup", rememberNoteSelection);
     noteContentInput.addEventListener("select", rememberNoteSelection);
